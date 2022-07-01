@@ -1,0 +1,242 @@
+---
+title: "Chapter 3 - Basic Data Visualization"
+author: "Gustavo R Santos"
+date: '2022-06-29'
+output: html_document
+---
+
+#Packt Book
+##Data Wrangling With R
+###Chapter 2 - How to Load Files to RStudio
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+*Library Import and dataset load*
+```{r}
+
+library(datasets)
+library(tidyverse)
+
+# Dataset Load
+data("mtcars")
+
+```
+
+1. Univariate Visuals
+
+**Histograms**
+```{r}
+
+# Histogram of miles per gallon
+hist(mtcars$mpg)
+
+```
+
+
+Customized histogram
+
+```{r}
+
+#Custom histogram
+hist(mtcars$mpg, col= 'royalblue',
+     main='Histogram of MPG', xlab = 'MPG',
+     breaks= 'FD')
+
+```
+
+
+**Boxplots**
+
+```{r}
+
+# Plot Boxplot of MPG
+boxplot(mtcars$mpg, col='royalblue',
+        main= 'Boxplot of MPG',
+        ylab= 'Miles per Gallon')
+
+```
+
+
+*Do cars with automatic transmission consume make less miles per galon than the manual vehicles?*
+```{r}
+
+# boxplot AM vs MPG
+boxplot(mtcars$mpg[mtcars$am == 0],
+        mtcars$mpg[mtcars$am == 1],
+        col= c('coral', 'royalblue'),
+        names= c('Automatic', 'Manual'),
+        ylab= 'MPG',
+        main= 'Types of Transmission and the Fuel Efficiency'
+        )
+
+```
+
+Boxplot using formula notation
+
+```{r}
+
+# Boxplot with formula notation
+boxplot(mpg ~ cyl, data= mtcars,
+        col= c('gold', 'coral', 'blue'),
+        main= 'MPG by number of Cylinders')
+
+```
+
+
+**Density Plot**
+```{r}
+
+# Density calculation
+dp <- density(mtcars$mpg)
+
+# Plot
+plot(dp, main= 'Density Plot of MPG')
+
+# Fill shape
+polygon(dp, col="red")
+
+```
+
+
+Compare two density plots
+```{r}
+
+# Density calculation
+dp0 <- density(mtcars$mpg[mtcars$am == 0])
+dp1 <- density(mtcars$mpg[mtcars$am == 1])
+
+# Plot
+plot(dp0, main= 'Density Plot of MPG')
+plot(dp1, main= 'Density Plot of MPG', ylim= c(0,0.1) )
+# Legend
+legend(x=35, y=0.1 , c('Automatic', 'Manual'), fill= c('red', 'blue'))
+
+# Fill shape
+polygon(dp0, border='red', lwd=2)
+polygon(dp1, border='blue', lwd=2)
+
+```
+
+**2. Two Variable Plots**
+
+**Scatterplots**
+
+```{r}
+
+# Basic scatterplot
+plot(x=mtcars$hp, y=mtcars$mpg, 
+     main= 'Scatterplot HP vs. MPG',
+     xlab= 'HP', ylab= 'MPG',
+     col='royalblue', pch=16)
+
+```
+
+
+```{r}
+
+# MPG vs Weight
+plot(x=mtcars$wt, y=mtcars$mpg, 
+     main= 'Scatterplot Weight vs. MPG', cex= 2,
+     xlab= 'HP', ylab= 'MPG',
+     col='royalblue', pch=16)
+
+```
+
+
+**Bar/ Column Plot**
+
+```{r}
+# Column Plot: How many cars by cylinder
+cyl_counts <- table(mtcars$cyl)
+barplot(cyl_counts, col='royalblue',
+        main='Number of Cars by Cylinder')
+
+```
+
+
+```{r}
+# Bar Plot
+v_eng <- table(mtcars$vs)
+barplot(v_eng, main='Cars with V-Engine vs Straight',
+        horiz=TRUE, col='royalblue',
+        names= c('V-Shaped', 'Straight'))
+
+
+```
+
+
+**Line Plot**
+
+```{r}
+
+# Load dataset
+data("AirPassengers")
+
+# Plot line
+plot(AirPassengers, col= 'skyblue',
+     lwd=3, main= 'Evolution of the Number of Air Passengers from 1949-1960')
+
+```
+
+```{r}
+
+# Random X and Y
+x <- 1:12
+y <- rnorm(12)+2
+y2 <- rnorm(12)+3
+y3 <- rnorm(12)+4
+# Line Plot
+plot(x,y, col='royalblue', type= 'l', lwd=3, ylim=c(0,6))
+# Add second line
+lines(x,y2, col='coral', type= 'b', lwd=3)
+# Add third line
+lines(x,y3, col='darkgreen', type= 'l', lwd=3, lty = 2)
+#Add legend
+legend(x=11, y=6, c('y', 'y2', 'y3'), fill=c('royalblue','coral', 'darkgreen'))
+
+```
+
+**3. Plotting Multiple Variables**
+
+We can use more than two variables to plot graphics when we use size or color based on a third variable to differentiate data points.
+
+```{r}
+
+# Scatterplot 3 variables
+plot(mtcars$hp, mtcars$mpg, 
+     col=mtcars$cyl, cex=mtcars$cyl/3, lwd=2,
+     xlab='HP', ylab='MPG',
+     main= 'MPG versus HP and Cylinder')
+#Add legend
+legend(260, 32, sort(unique(mtcars$cyl)), 
+       col=sort(unique(mtcars$cyl)),
+       cex = sort(unique(mtcars$cyl)/6), 
+       pch=1, horiz = T, yjust = 0.5)
+
+```
+
+**Bar Plot with three variables**
+Too much information.
+
+```{r}
+
+# Stacked Bar Plot with Colors and Legend
+counts <- table(mtcars$vs, mtcars$cyl)
+barplot(counts,  xlab="Cylinders", col=c("royalblue","coral"),
+        legend.text = c('V', 'Line'),
+        args.legend = list(x='top', horiz=T),
+        main='Cars by Cylinder and Engine/ Transmission',
+        sub= list('Engines with 8 cylinders tend to be constructed in V shape with automatic transmission', col='darkgray'))
+lines(factor(c(4,6,8)), table(mtcars$am, mtcars$cyl)[1,], type='b', col='green', lw=3)
+lines(factor(c(4,6,8)), table(mtcars$am, mtcars$cyl)[2,], type='b', col='yellow', lw=3)
+legend(1.3,12, horiz = T, c('Auto', 'Manual'), fill=c('green', 'yellow'))
+
+
+
+```
+
+
+
+
