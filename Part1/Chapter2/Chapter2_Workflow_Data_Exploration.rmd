@@ -1,0 +1,334 @@
+---
+title: "Chapter2_Workflow_Data_Exploration"
+author: "Gustavo R Santos"
+date: '2022-06-21'
+output: html_document
+---
+
+
+#Packt Book
+##Data Wrangling With R
+###Chapter 2 - Workflow for Data Exploration
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+**Importing libraries**
+
+```{r}
+library(datasets)
+library(lubridate)
+library(tidyverse)
+library(mice)
+library(corrplot)
+
+```
+
+**1. Import Texas Housing Sales to our session**
+
+```{r}
+data("txhousing")
+
+# View the dataset
+View(txhousing)
+```
+
+**1.1 Check data types**
+This step is important in object oriented programming languages, such as R, because the type of object determines the methods and attributes we are able to use to analyze it.
+
+```{r}
+# Check data types
+
+glimpse(txhousing)
+
+# or you can also use str, if you prefer
+#str(txhousing)
+
+```
+
+**1.2 Adjusting data types**
+We will change `year`, `month`and `date` to datetime objects. But before, it is a good practice to create a new variable when making changes to the dataset to preserve the original data and be able to revert, if needed.
+
+```{r}
+
+# Let's create a copy of the dataset to preserve the original
+txhouses <- txhousing
+
+
+# Adjusting data types
+txhouses$date <- date_decimal(txhouses$date, tz='GMT')
+txhouses$city <- as.factor(txhouses$city)
+
+glimpse(txhouses)
+
+```
+
+**2. Descriptive statistics**
+This is where we start to really explore the data
+
+```{r}
+# Descriptive statistics
+summary(txhouses)
+```
+
+**2.1 Does each city appear the same number of times? 187**
+We see that the most frequent cities in our file have the same number, what makes us wonder if there is the same value for each city. So we can get the total number of observations and divide by the number of cities
+
+```{r}
+
+nrow(txhouses) / length(unique(txhouses$city))
+
+```
+
+
+
+**3. Missing Values**
+Now it is time to check missing values. They can distort our analysis and models, so it is necessary to handle them.
+Next I will show you a nice way to look for all of the NAs from a dataset at once.
+
+```{r}
+# Copy the dataset
+idx_notna <- txhouses
+
+#Add an index column
+idx_notna$idx <- 1:nrow(idx_notna)
+
+# Omit the NAs and get the idx column. The NAs will be the complementary subset, the rows that are not in the subset with omited NA
+idx_notna <- idx_notna %>% na.omit() %>% select(idx) %>% as.vector() %>% unlist()
+
+# View all the NAs 
+View(txhouses[-idx_notna,])
+
+# Percentage of NAs
+print( nrow(txhouses[-idx_notna,]) / nrow(txhouses) )
+
+```
+
+But in general, we will work on one variable at a time.
+
+You can go the easy way and drop all the NAs. But that would not be good because we would be losing 17% of our data. That's too much.
+
+```{r}
+# Drop NAs
+txhouses_no_na <- txhouses %>% na.omit()
+```
+
+We will have to combine methods. If you look again on the NAs entries subset, there are many cities that have only the city name, year, month and nothing else. This is a kind of missing data that must be dropped, just because it is not good. Any method here would be creating new data, and that could influence our model.
+
+```{r}
+
+# Find the row numbers with 5 NAs
+idx <- which( rowSums(is.na(txhouses)) == 5 )
+
+# Filter those rows out
+txhouses <- txhouses[-idx,]
+
+```
+
+There are many NAs in listings and inventory. Let's check the proportion NA vs not NA.
+
+```{r}
+
+# Proportion listings
+print('Proportions to `listings`')
+prop.table( table(is.na(txhouses$listings)))
+
+
+# Proportion invnetory
+writeLines('--------------------------------')
+writeLines('\nProportions to `inventory`')
+prop.table( table(is.na(txhouses$inventory)))
+
+# Proportion sales
+writeLines('--------------------------------')
+writeLines('\nProportions to `sales`')
+prop.table( table(is.na(txhouses$sales)))
+
+# Proportion volume
+writeLines('--------------------------------')
+writeLines('\nProportions to `volume`')
+prop.table( table(is.na(txhouses$volume)))
+
+# Proportion median
+writeLines('--------------------------------')
+writeLines('\nProportions to `median`')
+prop.table( table(is.na(txhouses$median)))
+
+```
+
+Inputation. 
+
+For `sales`, `volume` and `median`, let's use the median value.
+```{r}
+
+# Impute median value
+txhouses$sales[is.na(txhouses$sales)] <- median(txhouses$sales, na.rm=T)
+txhouses$volume[is.na(txhouses$volume)] <- median(txhouses$volume, na.rm=T)
+txhouses$median[is.na(txhouses$median)] <- median(txhouses$median, na.rm=T)
+
+```
+
+
+
+Let's use the library mice to input data. It uses Regression as predictor for missing values.
+
+```{r}
+# Use mice inputer
+impute <- mice(data.frame(txhouses[,7:8]), seed = 123)
+impute_data <- complete(impute, 1)
+
+
+# Replace the columns with the imputed ones
+txhouses_clean <- txhouses %>% 
+  mutate(listings = impute_data[,1],
+         inventory = impute_data[,2])
+
+```
+
+```{r}
+
+# Let's compare the distribution of the data prior and after the imputation
+comparison_after_impute <- data.frame(before = txhouses$listings,
+                                      after = txhouses_clean$listings)
+
+before <- density(na.omit(comparison_after_impute$before))
+after <- density(na.omit(comparison_after_impute$after))
+
+# Plot both distributions
+plot(before, col='red', lwd=2, main = 'Comparison Before and After Imputation listings and inventory')
+lines(after, col='blue', lwd=1)
+
+
+```
+
+The missing data is now gone.
+```{r}
+
+# Checking missing data
+sum( is.na(txhouses_clean) )
+```
+
+7. Data Distributions
+It is important so we know the data's variation patterns.
+Let's plot histograms.
+
+```{r}
+# Transform to data.frame type for base R plotting
+txhouses_clean <- as.data.frame(txhouses_clean)
+
+# Create a grid for plotting multiple histograms
+par(mfrow = c(4,2))
+
+# Plot histograms
+for (var in colnames(txhouses_clean[2:8])) {
+  hist(txhouses_clean[,var],
+       col= 'blue',
+       main= paste('Histogram of', var),
+       border='white' )
+}
+
+```
+
+Plotting Boxplots to check outliers
+
+```{r}
+
+# Create a grid for plotting multiple boxplots
+par(mfrow = c(3,2))
+
+# Plot boxplots
+for (var in colnames(txhouses_clean[4:8])) {
+  boxplot(txhouses_clean[,var],
+       col= 'blue',
+       main= paste('Boxplot of', var)  )
+}
+```
+
+Checking Quantity and Removing Outliers
+```{r}
+
+# Loop by variable
+for (var in colnames(txhouses_clean[4:8])) {
+  variable = txhouses_clean[, var]
+  
+  # Calculate upper and lower cap values
+  upper_cap = quantile(variable, 0.75) +  (IQR(variable) * 1.5)
+  lower_cap = quantile(variable, 0.25) -  (IQR(variable) * 1.5)
+  
+  # Calculate total outliers
+  outliers = length(which(variable > upper_cap)) + length(which(variable < lower_cap))
+  
+  # Print Quantities on the screen
+  print( paste('Variable:', var) )
+  print( paste('Outlier observations:', outliers, '| Pct:', round(outliers/nrow(txhouses_clean),3)*100,'%') )
+  writeLines('----------------------------------------')
+  
+  # Remove 
+  txhouses_no_outliers <- txhouses_clean %>% 
+    filter(variable > lower_cap & variable < upper_cap)
+    
+}
+
+```
+
+8. Visualizations
+
+Correlations. Important to prevent multicolinearity and good way to determine best variables.
+
+```{r}
+
+# Rearrange dataset for better visualization
+txhouses_no_outliers <- txhouses_no_outliers %>% 
+  select(median, everything())
+
+# Create a correlation matrix excluding city
+CM = cor(txhouses_no_outliers[, -c(2,9)])
+
+#Plot the correlation heatmap
+corrplot(CM, method = 'square', type = 'lower', 
+         diag = FALSE, addCoef.col = 'black')
+
+
+```
+
+Scatterplots
+
+```{r}
+#Plotting all the scatterplot for pairs of variables
+vars_for_scatter <- c('median', 'sales', 'volume', 'listings' , 'inventory')
+pairs(txhouses_no_outliers[,vars_for_scatter])
+```
+
+
+
+
+9. Modeling
+
+```{r}
+
+# Create a variable with the length of our dataset
+len <- nrow(txhouses_no_outliers)
+
+# Create a random index for data split
+idx <- sample(1:len, size=len*0.8)
+
+# Train test split
+train <- txhouses_no_outliers[idx,]
+test <- txhouses_no_outliers[-idx,]
+
+```
+
+
+Liner Regression
+
+```{r}
+linear_model <- lm('median ~ . - date - sales - listings', data=train)
+summary(linear_model)
+
+```
+```{r}
+#Plot the residuals
+plot(linear_model)
+```
+

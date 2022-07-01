@@ -1,0 +1,123 @@
+---
+title: "Chapter2_Load_Files_RStudio"
+author: "Gustavo R Santos"
+date: '2022-06-20'
+output: html_document
+---
+
+#Packt Book
+##Data Wrangling With R
+###Chapter 2 - How to Load Files to RStudio
+
+---
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+1. Let's load a file from the built-in datasets from R
+
+```{r}
+# Loading a preinstalled dataset to R
+data("Orange")
+```
+
+We can perform the same task, but loading it to a different variable name.
+
+```{r}
+
+# Load the dataset to a different variable name
+library(datasets)
+df <- datasets::Orange
+
+```
+
+
+2. We can save the file to a CSV now with the following code.
+It will be saved to the same folder where your script or RProj file is saved. To know where it is being saved, use the command `getwd()` on your Console screen.
+
+```{r}
+
+# Save a variable to csv
+write.csv(df, 'oranges.csv', row.names = FALSE)
+write_csv()
+```
+
+
+
+3. Next we are going to load the same dataset *Orange* from a CSV file in our local machine.
+
+```{r}
+# Load dataset from csv using base R
+path = 'C:/Users/.../oranges.csv'
+df <-  read.csv(path)
+```
+
+
+4. We can also load a csv file using the *readr* library from the *tidyverse* package.
+
+```{r}
+# Load dataset from csv using tidyverse
+# Load the library
+library(tidyverse)
+
+# setup the file path
+path = 'C:/Users/.../oranges.csv'
+
+# Load the file
+df <-  read_csv(path)
+```
+
+We can list the strings that should be considered missing values (NA).
+In the example below, we're considering blank values and "No Record".
+
+```{r}
+# Listing entries to consider NA
+
+# setup the file path
+path2 = 'C:/Users/.../oranges_modified.csv'
+
+df <- read_csv(path2, na = c('','No Record') )
+```
+
+Load a file with restrictions of quantity of rows and/ or columns to be loaded.
+
+```{r}
+# Load a file with only the original columns and 10 rows
+df <- read_csv(path2, col_select = c(1, 2, 3), n_max = 10)
+df %>% head(3)
+```
+
+
+
+5. Tibble vs Dataframe
+5.1 Printing
+
+Tibble can print all the variables in the console screen.
+
+```{r}
+
+# Print all the columns using tibble
+data("world_bank_pop")
+world_bank_pop %>% print(width=Inf)
+
+```
+
+Or you can also use the View function to access the built-in viewer from RStudio.
+
+```{r}
+View(world_bank_pop)
+```
+
+5.2 Column Names
+data.frame won't accept non-standard column names unless it changes it.
+Notice that *my column* will become *my.column*
+
+```{r}
+data.frame( `my column` = c(1,2,3) )
+```
+Tibble accepts it and won't change it.
+
+```{r}
+tibble(`my column` = c(1,2,3))
+
+```
+

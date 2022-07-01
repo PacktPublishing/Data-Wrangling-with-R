@@ -1,0 +1,134 @@
+---
+title: "Chapter2 - Basic Web Scraping"
+author: "Gustavo R Santos"
+date: '2022-06-20'
+output: html_document
+---
+
+
+#Packt Book
+##Data Wrangling With R
+###Chapter 2 - How to Load Files to RStudio
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+**Disclaimer**: web scraping is legal, but there are rules and ethics that surrounds it. When you want to scrape something from the web, make sure you are dealing with public data and don't forget to go to the website source and type in www.website.com/robots.txt. For example: https://en.wikipedia.org/robots.txt.
+Those pages will bring you what is allowed or not to be scraped from that website.
+
+---
+
+Let's begin installing and loading the necessary library for this script
+```{r}
+#install.packages("rvest")
+library(rvest)
+library(tidyverse)
+```
+
+1. Now we can use *rvest* to scrape pages it the Internet. That is a great way to acquire  data.
+Let's read the Wikipedia page with the list of GDP by country: https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)
+
+```{r}
+# Target Page
+page <- 'https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)'
+
+# Read the page and store in a variable
+gdp <- rvest::read_html(page)
+
+gdp
+
+```
+
+Now we have the *gdp* object with the head and body of the page, but not much we can do with that yet. Let's dig a little more.
+
+This is the title of the page:
+
+```{r}
+# Title of the page
+gdp %>% html_elements("title")
+```
+
+We can remove the HTML elements and see only the text:
+
+```{r}
+# See only the text
+gdp %>% html_elements("h1") %>% html_text()
+```
+
+If we want to extract only the paragraph text:
+
+```{r}
+# Extract the paragraph text only from the gdp page
+gdp %>% html_elements("p") %>% html_text()
+```
+
+From here, let's say we want only the first paragraph, then we can use the following code.
+
+```{r}
+
+# Extract only paragraph 1 from the web page
+p1 <- gdp %>% html_elements("p") %>% html_text()
+
+# We are using [2] in because the [1] is just a space break.
+p1[2]
+
+```
+
+2. Now let's move on to what is our interest: to get the table with the countries and GDPs. The real data.
+
+```{r}
+# Extract the table from the page
+gdp_df <- gdp %>% 
+  html_elements(xpath = '//*[@id="mw-content-text"]/div[1]/table[2]') %>% 
+  html_table() %>% 
+  .[[1]]
+
+# View the table
+View(gdp_df)
+  
+```
+
+--- 
+
+3. Pulling Data from API.
+We are going to pull a Monthly Treasury Statement (MTS) from the US Treasury API.
+
+```{r}
+library("httr")
+library("jsonlite")
+
+url = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/mts/mts_table_1'
+
+treasury_api <- GET(url)
+
+```
+
+It is possible to look at the objects in our content.
+
+```{r}
+# Check the content in the API
+str(content(treasury_api))
+
+```
+
+And to create a dataframe out of it, here is the code needed. We will transform the content in a json text, then parse it and finally extract only the `data` variable to create our dataframe `df`.
+
+```{r}
+# Transforming the results to text
+result <- content(treasury_api,'text', encoding = 'UTF-8')
+
+# Parsing data in JSON
+df_json <- fromJSON(result, flatten = TRUE)
+
+# Store as data frame
+df <- as.data.frame(df_json$data)
+```
+
+We can save the file using the following code.
+```{r}
+# Save a variable to csv
+write.csv(df, 'Monthly_Treasury_Statement.csv', row.names = FALSE)
+
+```
+
