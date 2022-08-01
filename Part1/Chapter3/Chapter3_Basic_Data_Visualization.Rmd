@@ -24,7 +24,7 @@ data("mtcars")
 
 ```
 
-1. Univariate Visuals
+####1. Univariate Visuals
 
 **Histograms**
 ```{r}
@@ -35,7 +35,7 @@ hist(mtcars$mpg)
 ```
 
 
-Customized histogram
+**Customized histogram**
 
 ```{r}
 
@@ -86,6 +86,7 @@ boxplot(mpg ~ cyl, data= mtcars,
 
 
 **Density Plot**
+The density plots need to be calculated as a separate variable and then plotted using `plot()`. The `polygon()` function fills the curve.
 ```{r}
 
 # Density calculation
@@ -100,7 +101,8 @@ polygon(dp, col="red")
 ```
 
 
-Compare two density plots
+**Compare two density plots**
+This is a good way to compare distributions.
 ```{r}
 
 # Density calculation
@@ -119,10 +121,10 @@ polygon(dp1, border='blue', lwd=2)
 
 ```
 
-**2. Two Variable Plots**
+####2. Two Variable Plots**
 
 **Scatterplots**
-
+One of the best visuals to visualize relationships between numerical variables is the scatterplot.
 ```{r}
 
 # Basic scatterplot
@@ -145,7 +147,7 @@ plot(x=mtcars$wt, y=mtcars$mpg,
 ```
 
 
-**Bar Plot**
+**Column Plot**
 Bar plot and Column Plot can be used interchangeably, although there is a difference about the layout of the graphic, being columns when the categories are on the X axis and bar if the categories lie on the Y axis.
 
 ```{r}
@@ -159,7 +161,8 @@ barplot(cyl_counts, col='royalblue',
 
 ```
 
-**Column Plot**
+
+**Bar Plot**
 
 ```{r}
 # Create a table count for each engine type
@@ -208,7 +211,8 @@ legend(x=11, y=6, c('y', 'y2', 'y3'), fill=c('royalblue','coral', 'darkgreen'))
 
 ```
 
-**3. Plotting Multiple Variables**
+
+####3. Plotting Multiple Variables**
 
 We can use more than two variables to plot graphics when we use size or color based on a third variable to differentiate data points.
 
