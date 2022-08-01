@@ -157,7 +157,7 @@ prop.table( table(is.na(txhouses$median)))
 
 ```
 
-Inputation. 
+**Inputation**
 
 For `sales`, `volume` and `median`, let's use the median value.
 ```{r}
