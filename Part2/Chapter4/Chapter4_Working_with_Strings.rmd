@@ -1,0 +1,223 @@
+---
+title: "Chapter4_Working_With_Strings"
+author: "Gustavo R Santos"
+date: '2022-07-03'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 2 - How to Load Files to RStudio
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+# StringR
+This library is part of the `tidyverse` package and brings you many tools to work with strings.
+
+### **Import Libraries**
+```{r}
+
+# Use install.packages('library_name') is you don’t have it installed
+library(tidyverse)
+library(stringr)
+library(gutenbergr)
+
+```
+
+### **Creating a string**
+To create a string, use single or double quotes 
+```{r}
+
+string1 <- 'I am a string'
+string2 <- "me too"
+string3 <- 'quote inside "quote", use single quote for the string and double for the text.'
+
+# Priting
+print(string1)
+writeLines(string2)
+writeLines(string3)
+
+```
+
+### **Detecting Patterns**
+Detect if a string has a given pattern.
+
+```{r}
+
+# Create a string
+text <- 'hello'
+# Detect if the string has the letters "rt"
+str_detect(text, 'rt')
+# Detect if the string has the letters "ll"
+str_detect(text, 'll')
+
+# Create a phrase
+text <- 'hello, world!'
+# Detect if the string has the letters "ll"
+str_detect(text, 'world')
+
+
+```
+
+Determine if a string starts with a pattern.
+This can be useful to classify texts, for example
+
+```{r}
+
+# Create strings
+my_id <- 'ORDER-1234'
+
+# Starts with
+str_starts(string=my_id, pattern='ORDER')
+
+```
+Find the index of a pattern
+
+```{r}
+
+# Create vector
+shop_list <- c('fruit', 'vegetable', 'pasta')
+
+# Index of "pasta"
+str_which(string=shop_list, pattern='pasta')
+
+```
+Find location of a pattern
+
+```{r}
+
+shop_list <- c('fruit', 'vegetable', 'pasta')
+
+str_locate(shop_list, 'pasta')
+
+```
+Counting pattern
+
+```{r}
+
+# Text
+text <- 'I want want want to count the repetitions of want in this phrase. Do you want the same?'
+# Count occurrences of want
+str_count(text, 'want')
+
+```
+
+### **Subset Strings**
+
+Extract only the text between the start and end defined in the function.
+```{r}
+# Create strings
+my_id <- 'ORDER-1234'
+# Count occurrences of want
+str_sub(my_id, start=1, end=5)
+```
+
+Return only the matches
+
+```{r}
+# Text
+my_ids <- c('ORDER-1234', 'ORDER-2234', 'MAINT-1234', 'MAINT-2234')
+
+# Return orders
+str_subset(my_ids, 'ORDER')
+
+```
+
+
+### **Manage Lengths**
+
+Length of Strings
+
+```{r}
+
+# text
+text <- 'What is the size of this string?'
+# Length
+str_length(text)
+
+```
+Trim
+
+```{r}
+# text
+text <- ' Text    to  be trimmed. '
+
+#trim
+str_trim(text, side='both')
+
+# squish
+str_squish(text)
+
+```
+
+### **Mutate Strings**
+
+Change letter case
+
+```{r}
+# text
+text <- 'Hello world.'
+
+# to UPPERCASE
+str_to_upper(text)
+
+# to lowercase
+str_to_lower(text)
+
+# to Title Case
+str_to_title(text)
+
+```
+
+Replace a pattern
+
+```{r}
+# text
+text <- 'Hello world. The world is beautiful!'
+
+# Replace a pattern
+str_replace(text, 'world', 'day')
+
+# Replace all the patterns at once
+str_replace_all(text, 'world', 'day')
+
+```
+### **Join and Split**
+
+Join
+```{r}
+
+# text
+s1 <- 'Hello'
+s2 <- 'world!'
+
+# concatenate
+str_c(s1, s2, sep=' ')
+
+```
+
+Split string
+
+```{r}
+
+#text
+text <- 'I am learning how to split strings'
+
+# split
+str_split(text, pattern=' ')
+
+```
+
+Order strings
+```{r}
+
+# text
+shop_list <- c('bananas', 'strawberries', 'avocado', 'pasta')
+
+# ordinate
+str_sort(shop_list, decreasing = FALSE)
+
+```
+

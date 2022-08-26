@@ -1,0 +1,126 @@
+---
+title: "Chapter4_Data_Summaries"
+author: "Gustavo R Santos"
+date: '2022-07-06'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 2 - How to Load Files to RStudio
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+
+Let's download this public domain book Alice’s Adventures in Wonderland, by Lewis Carrol.
+We will use the text to learn more about stringr.
+
+**Download from Gutenberg library**
+```{r}
+
+# Download Alice's Adventures in Wonderland
+alice <- gutenberg_download(gutenberg_id=11)
+
+```
+
+Creating a data summary of the words ending with *"ing"* in the book
+
+```{r}
+
+# Extract the "ing" ending words
+ings <- str_extract_all(alice, '\\b(\\w+ing)')
+
+# Transform the words in a vector
+ings <- unlist(ings)
+
+# Data Frequency to data.frame
+df_ings <- data.frame( table(ings) )
+
+# Sorting descending and collecting the top 10 most frequent observations
+df_ings_top10 <- df_ings[order(-df_ings$Freq)[1:10],]
+
+```
+
+Creating a complete data summary of the main characters of the book
+
+```{r}
+
+# List characters
+characters <- c('Alice', 'Rabbit', 'Queen', 'King', 'Cheshire Cat', 'Duchess', 'Caterpillar', 'Hatter')
+
+# Create regex string
+char_regex <- str_c(characters, collapse = '|')
+
+# Make the entire text Title Case for better match
+alice_title_case <- str_to_title(alice$text)
+
+# Extract the words
+count_book_chars <- unlist( str_extract_all(alice_title_case, char_regex) )
+
+# Data Frequency to data.frame
+df_book_chars <- data.frame( table(count_book_chars) )
+
+```
+
+Enhance the frequency table
+
+```{r}
+
+# Sort table by frequency
+df_book_chars <- df_book_chars[order(-df_book_chars$Freq),]
+
+# Add percentages rounded to 3 decimals
+df_book_chars$pct <- round( proportions(df_book_chars$Freq), 3)
+
+# Add cumulative sum of the pct
+df_book_chars$pct_cumSum <- cumsum(df_book_chars$pct)
+
+```
+
+
+```{r}
+
+# Install
+#install.packages("gmodels")
+# Load gmodels
+library(gmodels)
+
+#Load the data
+data("mtcars")
+
+# Create the contingency table
+CrossTable(mtcars$cyl, mtcars$gear, prop.t=TRUE, prop.r=TRUE, prop.c=TRUE)
+
+```
+
+
+### Factors
+
+Factor is a type of object to create categorical variables in R.
+We can create factors with ordered levels or not.
+
+```{r}
+
+# Textual variable
+var <- c('A', 'B', 'B', 'C', 'A', 'C')
+
+# To create a factor
+factor_var <- factor(var)
+
+```
+
+To create levels with hierarchical order, use the following code `levels()`.
+The order created was C < B < A
+```{r}
+
+# Ordered levels
+levels(factor_var) <- c('C','B','A')
+
+factor_var
+
+```
+
+
+

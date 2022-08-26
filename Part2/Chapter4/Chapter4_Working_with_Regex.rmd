@@ -1,0 +1,172 @@
+---
+title: "Chapter4_Working_Regex"
+author: "Gustavo R Santos"
+date: '2022-07-04'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 2 - How to Load Files to RStudio
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+# StringR
+This library is part of the `tidyverse` package and brings you many tools to work with strings.
+
+### **Import Libraries**
+```{r}
+
+# Use install.packages('library_name') is you don’t have it installed
+library(tidyverse)
+library(stringr)
+library(gutenbergr)
+
+```
+
+### **Escape Patterns**
+
+We can use an escape character – double backslashes \\ – to tell the computer: “hey, if I say \\., I am actually trying to look for a dot”. You can run this code `?"'"` to see other escape patterns.
+
+```{r}
+
+# Run this code to look for escape patterns
+#?"'"
+
+# text
+txt <- 'Looking for a .'
+
+# Regex escape
+str_view(txt, pattern='\\.')
+```
+
+Find a single character.
+
+```{r}
+
+# text
+txt <- 'This is a text for us to learn RegEx 101! Ok?'
+
+# Find a single character
+str_view_all(txt, '[r]')
+
+```
+
+Find numbers, text or punctuation
+
+```{r}
+
+# Find numbers
+str_view_all(txt, '[:digit:]')
+
+# Find letters
+str_view_all(txt, '[:alpha:]')
+
+# Find punctuation
+str_view_all(txt, '[:punct:]')
+
+# Find spaces
+str_view_all(txt, '[:space:]')
+
+```
+
+### **Basic codes**
+
+```{r}
+
+# text
+txt <- 'This is a text for us to learn RegEx 101! Ok?'
+
+# Find a single character
+str_view_all(txt, '[a-z]')
+
+# Not match is
+str_view_all(txt, '[^is]')
+
+# Find a digits
+str_extract_all(txt, '\\d')
+
+# Find not digits
+str_extract_all(txt, '\\D')
+
+# Find words
+str_extract_all(txt, '\\w')
+
+# Find not words
+str_extract_all(txt, '\\W')
+
+# Find white spaces
+str_extract_all(txt, '\\s')
+
+# Find not white spaces
+str_extract_all(txt, '\\S')
+
+# Begins with T
+str_view_all(txt, '^T')
+
+# Ends with k
+str_view_all(txt, '\\?$')
+
+# Boundaries
+str_view_all(txt, '\\btext\\b')
+
+# Pattern can happen zero or more times
+str_view_all(txt, '[0*]')
+
+# Pattern can happen one or more times
+str_view_all(txt, '1+')
+
+```
+
+
+
+
+Let's download this public domain book Alice’s Adventures in Wonderland, by Lewis Carrol.
+We will use the text to learn more about stringr.
+
+**Download from Gutenberg library**
+```{r}
+
+# Download Alice's Adventures in Wonderland
+#gutenberg_metadata
+alice <- gutenberg_download(gutenberg_id=11)
+
+```
+
+If we want to know how many times the word Alice happens in the text, here is a possible solution.
+
+```{r}
+
+# Exact Match of Alice
+sum(str_count(alice$text, 'Alice'))
+
+# How many digits in the text?
+sum(str_count(alice$text, '[:digit:]'))
+
+# How many written numbers 1-5. | means “or”.
+sum(str_count(alice$text, 'one|two|three|four|five'))
+
+# How many words in UPPERCASE
+sum(str_count(alice$text, '\\b[A-Z]+\\b'))
+
+# Count the gerund words, ending in "ing"
+sum(str_count(alice$text, '\\b(\\w+ing)'))
+
+
+```
+
+List the gerund words
+```{r}
+
+# Extract the gerund words, ending in "ing"
+gerunds <- c( str_extract_all(alice$text, '\\b(\\w+ing)') )
+
+# Show only the values
+unlist(gerunds)
+
+```
+
+
+
