@@ -24,7 +24,7 @@ Here is the chapters outline:
 12.	Other Data Visualization Options
 
 ### Part 4: [ Modeling ] 
-13.	Build Your First Model
+13.	Build a Model with R
 14.	Build an Application with Shiny in R
 
 
