@@ -1,0 +1,294 @@
+---
+title: "Chapter 5_Working_With_Numbers"
+author: "Gustavo R Santos"
+date: '2022-07-11'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 5 - Working with Numbers
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+**Creating Numeric variables**
+```{r}
+
+# Creating a scalar
+scalar <- 42
+print(scalar)
+
+# Creating a vector
+vec <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+print(vec)
+
+# Creating a Matrix
+mtrx <- matrix(data=vec, nrow = 3, ncol= 3)
+print(mtrx)
+
+# Creating Data frame
+df <- data.frame(column1= c(1,2,3),
+                 column2= c(4,5,6),
+                 column3= c(7,8,9))
+print(df)
+
+```
+
+
+**Vectors**
+```{r}
+
+# Vector
+vec1 <- c(9,8,7,6,5,4,3,2,1)
+vec2 <- c(1,2,3,4,5,6,7,8,9)
+
+# Slicing a vector
+vec1[1:3]
+
+# Slice by condition
+vec1[vec1 >= 6]
+
+# Sum of vectors
+vec1 + vec2
+
+# Multiplication of vectors
+vec1 * vec2
+
+# Addition or Multiplication of a vector by a single number
+vec1 * 10
+vec1 - 1
+
+# Two vectors of different sizes
+c(1,2) + c(1,2, 3, 4)
+
+```
+
+**Matrix**
+Two dimensional elements that require a different slicing notation
+
+```{r}
+
+# Create a Matrix
+mtrx <- matrix(1:12, nrow=4, ncol=3, byrow=T)
+
+# Slicing [row,col]
+mtrx[2,3]
+
+
+```
+**Data Frames**
+They are heterogeneous. They accept variables with different data types.
+```{r}
+
+# Data frame
+df <- data.frame(name = c('Carl', 'Vanessa', 'Hanna', 'Barbara'),
+                 class_ = c('Math', 'Math', 'Math', 'Math'),
+                 grade = c(8.5, 9, 9, 7)   )
+
+
+# Slicing Carl's grade (col 1 and col 3)
+df[1,3]
+
+# Slicing by variable
+df[, "grade" ]
+
+# Slicing by condition
+df[ df$grade > 8,]
+
+```
+
+Example: Extra point from the "professor"
+```{r}
+
+# Extra point
+# Scenario: everyone delivered
+df$new_grade <- df$grade + 1
+
+df
+```
+Normalization example
+
+```{r}
+
+# Normalization
+max_grade <- max(df$grade)
+df$grade <- df$grade/max_grade
+
+df
+```
+
+**Apply Functions**
+
+`apply()`
+ It let’s you apply a function to a row or a column of a data frame. 
+ Use margin = 1 to apply the function to every element of a row and 2 to apply it to every element of a column.
+ 
+```{r}
+
+# apply function mean to rows: sum 'grade' + 'new_grade'
+
+apply(df[,c('grade', 'new_grade')], MARGIN= 1, FUN = mean)
+
+# apply function mean to columns the column 3 and 4
+apply(df[,c(3,4)], MARGIN= 2, FUN= mean)
+
+# apply custom function
+my_func <- function (x){sum(x)/2}
+apply(df[,c(3,4)], MARGIN= 1, FUN= my_func)
+
+```
+ 
+ `lapply()`: List apply
+Used to apply a function to lists of objects, returning a list object of the same length.
+
+```{r}
+
+# lapply of a custom function to remove the extra point from new_grade
+my_func <- function (x){x-1}
+lapply_obj <- lapply(df$new_grade, my_func)
+
+```
+
+
+ `sapply()`: Same Length Apply
+Used to apply a function to lists of objects, returning an array or matrix object of the same length.
+
+```{r}
+
+# sapply of a custom function to a single column
+my_func <- function (x){x-1}
+sapply(df$new_grade, my_func)
+
+# sapply of a custom function to two columns
+sapply(df[,c(3,4)], my_func)
+
+```
+
+ `tapply()` : Text apply
+ This one applies your function to each factor variable of a vector.
+ 
+```{r}
+
+# Create new df
+# Data frame
+df <- data.frame(name = c('Carl', 'Vanessa', 'Hanna', 'Barbara', 'Jason', 'Alison', 'Kevin', 'Melody'),
+                 class_ = c('Math', 'Math', 'Math', 'Math', 'Math2', 'Math2', 'Math2', 'Math2'),
+                 grade = c(8.5, 9, 9, 7, 5, 7, 10, 9.5)   )
+
+# Calculate the mean for each class_
+tapply(df$grade, df$class_, mean)
+
+```
+ 
+ ---
+ 
+ ## Descriptive Statistics
+ 
+ Descriptive statistics are measurements or summarizations of a sample used to describe a variable
+```{r}
+
+# Set a seed to reproduce the same results
+set.seed(12)
+
+# Creating a variable: 50 data points, mean 0, standard deviation 1
+var1 <- rnorm(50, mean = 0, sd=1)
+
+# Creating a variable: 50 data points, mean 0, standard deviation 10
+var2 <- rnorm(50, mean = 0, sd=5)
+
+# Mean
+mean(var1)
+mean(var2)
+
+# Standard Deviation
+sd(var1)
+sd(var2)
+
+# Median
+median(var1)
+median(var2)
+
+# percentiles or quantiles
+quantiles(var1, c(0.25, 0.5, 0.75))
+
+
+
+
+```
+ 
+ 
+ # Histograms
+ 
+```{r}
+
+
+# Setup grid with 2 columns
+par(mfrow=c(1,2))
+
+# Histogram var1
+hist(var1, col='royalblue', ylim=c(0,20), xlim=c(-20,20) )
+
+# Histogram var1
+hist(var2, col='coral', ylim=c(0,20), xlim=c(-20,20) )
+
+# Reset grid to single plot
+par(mfrow=c(1,1))
+
+```
+ 
+Descriptive statistics in numbers
+```{r}
+
+# Create a dataframe with both variables for comparison
+df <- data.frame(var1= var1,
+                 var2= var2)
+
+
+
+# Comparison data frame
+data.frame( avg= apply(df, 2, mean),
+            std_dev= apply(df, 2, sd),
+            min_val= apply(df, 2, min),
+            pct25= apply(df, 2, function (x) {quantile(x,0.25)}),
+            median_val= apply(df, 2, median),
+            pct75= apply(df, 2, function (x) {quantile(x,0.75)}),
+            max_val= apply(df, 2, max)
+            )
+
+
+
+```
+
+Calculate statistics using the function `summary()`.
+
+```{r}
+
+# Descriptive stats with summary function
+summary(df)
+
+```
+
+
+```{r}
+library(skimr)
+skim(df)
+```
+
+**Correlation**
+Correlation is the measurement of the strength of a linear relationship between two variables.
+```{r}
+
+# Correlation
+cor(var1, var2, method='pearson')
+
+# Scatterplot
+plot(var1, var2, col='royalblue', pch=16,
+     main='Scatterplot var1 x var2')
+
+```
+
+
+
+
