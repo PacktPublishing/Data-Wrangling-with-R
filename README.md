@@ -7,7 +7,7 @@ Here is the chapters outline:
 
 ### Part 1: [ Load & Explore Data ]
 1. Fundamentals of Data Wrangling
-2	 Load & Explore Datasets
+2. Load & Explore Datasets
 3. Basic Data Visualization
 
 ### Part 2: [ Data Wrangling ] 
