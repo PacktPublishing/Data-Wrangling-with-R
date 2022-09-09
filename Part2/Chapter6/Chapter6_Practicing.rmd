@@ -1,0 +1,259 @@
+---
+title: "Chapter6_Practice"
+author: "Gustavo R Santos"
+date: '2022-07-15'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 6 - Working with Date and Time objects
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+### Import libraries and Load Dataset
+```{r}
+
+library(tidyverse)
+library(lubridate)
+
+```
+
+## Practice
+
+
+The dataset to be used in this exercise is the Classic Rock, from fivethirtyeight.
+To access the original dataset, got to: https://github.com/fivethirtyeight/data/tree/master/classic-rock
+```{r}
+
+# URL where the data is stored
+url <- 'https://raw.githubusercontent.com/fivethirtyeight/data/master/classic-rock/classic-rock-raw-data.csv'
+
+# Load to RStudio
+df <- read_csv(url)
+
+# Make a copy of the original data
+df_original <- df
+
+# View data frame in RStudio viewer
+#View(df)
+  
+```
+
+Transform column time in datetime.
+You may have just seen that the column time brings integer numbers.
+To be able to work with these dates, we must, first, transform that variable to a datetime variable.
+
+```{r}
+
+# Variable TIME to datetime
+df$TIME <- as_datetime(df$TIME)
+
+```
+
+For our purpose, there is no need of all the variables. Let's select some.
+```{r}
+
+# Select variables
+df <- df[,c('Song Clean', 'ARTIST CLEAN', 
+            'CALLSIGN', 'TIME', 'COMBINED', 
+            'First?')]
+
+```
+
+Next, we are creating some extra granularity for time, by adding columns for month, day, week day and hour for further analysis.
+Notice that year is always 2014 and month is 06, so no point in keeping them.
+
+```{r}
+
+# Add new column year
+df$year <- year(df$TIME)
+# Add new column month
+df$month <- month(df$TIME)
+# Add new column day
+df$day <- day(df$TIME)
+# Add new column week day
+df$weekday <- wday(df$TIME)
+# Add new column hour
+df$hour <- hour(df$TIME)
+
+```
+
+
+### Visualizations
+
+Since now we have many slices of time, we can create many different views of the musics using that data.
+
+What is the distribution of musics played per day of the week?
+```{r}
+
+# Filter only unique observations
+df_unique <- df[!duplicated(df$`Song Clean`),]
+
+# Songs by weekday
+song_by_wkd <- table(df_unique$weekday)
+
+# Bar plot of Songs by weekday
+barplot(song_by_wkd, col='royalblue',
+        main='Number of unique songs by day of the week',
+        xlab='Day of the Week [1=Sun, 7=Sat]',
+        ylab= 'Distinct Songs')
+
+```
+
+What is the hour when there are more music being played?
+In this case, I don't need to filter only distinct song, as I really want to know what is the most busy hour of those days.
+```{r}
+
+# Songs by hour
+song_by_hour <- table(df$hour)
+
+# Bar plot of Songs by hour
+barplot(song_by_hour, col='royalblue',
+        main='Songs by hour',
+        xlab='Hour',
+        ylab= 'Songs Played')
+
+```
+
+
+It looks like there is something weird going on at 11pm, or 23 hours. Let's filter that and have a closer look, just like in a real life project.
+
+```{r}
+
+# Filter and arrange only songs played at 23h
+df_23 <- df[df$hour == 23,]
+df_23 <- arrange(df_23, `Song Clean`,CALLSIGN, TIME)
+
+
+```
+
+A first verification can be searching for duplicate entries.
+```{r}
+
+# Checking if there are duplicated rows
+# Number of rows in the dataset - Number of unique rows
+dim(df_23)[1] - df_23 %>% distinct() %>% nrow()
+
+# Filter only the duplicated rows
+dups <- df_23[duplicated(df_23),]
+
+# Dimensions of dups
+dim(dups)
+
+# Test for real duplicates: if sum of TRUE equal cells is 11 (all columns) then it is dup.
+real_dup <- c()
+for (row in 1:279) {
+  equal_cols = sum(dups[row,] == dups[row+1,])
+  if (equal_cols == 12) {real_dup <- c(real_dup, row) }
+}
+
+# Look at duplicates
+head(dups[c(9,81),])
+
+# Checking duplicates
+df_original %>% 
+  filter( (TIME == ymd_hms("2014-06-19 23:54:25")) &
+          (COMBINED %in% c('Another One Bites the Dust by Queen',
+                           'Fly Like an Eagle by Steve Miller Band')) )
+
+
+# Remove duplicates
+df <- df_original[!df_original$UNIQUE_ID %in% c('WCSX0949', 'WCSX1021', 'WCSX0955', 'WCSX1005'),]
+
+# Select variables
+df <- df %>% 
+  select('Song Clean', 'ARTIST CLEAN', 'CALLSIGN', 'TIME', 'COMBINED', 'First?')
+# Variable TIME to datetime
+df$TIME <- as_datetime(df$TIME)
+# Add new column year
+df$year <- year(df$TIME)
+# Add new column month
+df$month <- month(df$TIME)
+# Add new column day
+df$day <- day(df$TIME)
+# Add new column week day
+df$weekday <- wday(df$TIME)
+# Add new column hour
+df$hour <- hour(df$TIME)
+
+```
+
+
+Everything looks fine. What happened is that we summed all the songs played by hour for all the days in that week. A better approach should be grouping the dataset by day and take an average of songs played by hour.
+
+```{r}
+
+# Group data by weekday
+df_by_day <- df %>% 
+  group_by(weekday, hour) %>% 
+  summarise(songs_ct = n() )
+
+# Group the result by hour
+df_by_day <- df_by_day %>% 
+  group_by(hour) %>% 
+  summarize(avg_songs_ct = mean(songs_ct)) %>% 
+  ungroup()
+
+# Line plot of Songs by weekday
+plot(y= df_by_day$avg_songs_ct, df_by_day$hour,
+     type = 'l', pch = 19, lwd=3,
+     col='royalblue',
+     main='Avg Number of Songs Played by hour',
+     xlab='Hour',
+     ylab= 'Songs Played')
+
+```
+Even then, the number of songs played at 11pm is really high.
+
+Now, let's see what hour has most songs being played for the first time.
+```{r}
+
+# Filter only first time = 1
+first_time <- df[df$`First?`==1,]
+
+# First Time Songs by Hour
+first_time <- first_time %>% 
+  group_by(hour) %>% 
+  summarise(song_ct= n())
+
+
+# Line plot of First appearance Songs by hour
+plot(x=first_time$hour, y=first_time$song_ct,
+     col='royalblue', type='l', lwd=3,
+        main='First Time Played by hour',
+        xlab='Hour',
+        ylab= 'Songs Played')
+
+
+```
+
+Average Number of songs played by radio by day
+```{r}
+
+# Average by radio by day
+by_radio <- df %>% 
+  group_by(CALLSIGN, weekday) %>% 
+  summarise(song_ct = n()) %>% 
+  group_by(CALLSIGN) %>% 
+  summarise(avg_song= mean(song_ct)) %>% 
+  arrange(desc(avg_song)) %>% 
+  ungroup() %>% 
+  head(5)
+
+# Bar Plot
+barplot(avg_song ~ CALLSIGN, data=by_radio,
+        horiz = T,
+        main='Average Number of Songs by Radio Station in a Day',
+        xlab = 'Avg number of songs played', ylab='Radio Station',
+        col='royalblue')
+
+```
+
+
+
+
+
+

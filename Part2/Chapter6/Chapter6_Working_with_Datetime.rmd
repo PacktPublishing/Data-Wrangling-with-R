@@ -1,0 +1,246 @@
+---
+title: "Chapter6_Working_with_DateTime"
+author: "Gustavo R Santos"
+date: '2022-07-14'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 6 - Working with Date and Time objects
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+### Import libraries and Load Dataset
+```{r}
+
+library(tidyverse)
+library(lubridate)
+
+```
+
+## Introduction
+
+There are three main ways to work with datetime objects in data science.
+1. You create them
+2. You parse them from a string or text
+3. Arithmetic operations
+
+---
+
+**1. Creating a Date or datetime objects**
+Computers register date and time in their systems. As convention, computers compute any date and time objects using January 1st, 1970 at 00:00:00 UTC.
+You can check the current date and time from your system using *lubridate*.
+```{r}
+
+# Checking today's system date
+today()
+
+# Checking current system's time
+now()
+
+# Creating a date object
+as_date(0)
+ymd(20220714)
+mdy('Jul142022')
+yq('2010Q4')
+
+# Creating a time object
+hms::as_hms(43200)
+ymd_hms(20220714150000)
+
+# Creating a datetime object one year after 1970-01-1
+#(60s*60min*24h*365d = 31,536,000 seconds)
+as_datetime(31536000)
+
+```
+
+**datetime to date**
+Dropping time portion of a datetime object.
+```{r}
+
+# Datetime object
+dt_tm <- ymd_hm( '2022-01-02 03:04' )
+
+# Convert to just date object
+as_date( dt_tm)
+
+```
+
+
+**2. Parsing datetime objects from strings or text**
+
+When dealing with datetime objects in a text or data frame and you want to parse or split the dates, use the following commands.
+
+```{r}
+
+# Creating a variable with 4 dates
+dt <- c('2000-01-01 01:01:01',
+        '2005-02-02 02:02:02',
+        '2010-03-03 03:03:03',
+        '2020-04-04 04:04:04')
+# Assign it as datetime object
+dt <- as_datetime(dt)
+
+### From a variable of dates, split them ###
+
+# years
+year(dt)
+# months
+month(dt)
+# weeks
+week(dt)
+#week day
+wday(dt)
+# days
+day(dt)
+# hours
+hour(dt)
+# minutes
+minute(dt)
+# seconds
+second(dt)
+# time zones
+tz(dt)
+
+```
+**Gather date/ time objects**
+```{r}
+
+# Separate variables
+y_obj <- '2022'
+m_obj <- '5'
+d_obj <- '10'
+
+# gather date
+ymd( paste(y_obj,m_obj,d_obj, sep='-') )
+
+
+```
+
+
+**3. Arithmetic Operations**
+
+Arithmetic operations with datetime are slightly more complex than operations with real numbers. The complexity comes from different units and specific properties, such as time zones.
+
+If we add 20 days to Jan 10, we get to the 30th. But if we add it to Feb, we will land in March, for example.
+```{r}
+
+# Simple subtraction
+dt1 <- as_date('2022-06-01')
+dt2 <- as_date('2022-05-01')
+
+dt1 - dt2
+
+```
+
+
+To comprehend this, we must understand periods, durations and intervals.
+* Period: tracks changes in time, not accounting for any deviations.
+* Duration: tracks passage of time, accounting for deviations like gaps.
+* Interval: a time interval composed by start and end.
+
+**Period**
+```{r}
+
+# Date
+dt <- ymd('2000-01-01')
+
+# Date minus a past date
+today() - dt
+
+# Create a period to add or subtract
+p <- years(x=22) + months(x=06) + days(x=13)
+# Another syntax
+p <- period( c(22, 6, 13), c('year','month', 'day'))
+p
+# Operations
+dt + p
+dt - p
+
+#--Next maintenance--
+# Date of the last maintenance
+dt <- ymd('2021-01-15')
+
+# Create a period to add or subtract
+p <- years(x=1) + months(x=06) + days(x=1)
+# Another syntax
+p <- period( c(1, 6, 1), c('year','month', 'day'))
+# Calculation
+writeLines( paste('Next maintenance date is on:', dt + p) )
+
+
+```
+
+**Duration**
+```{r}
+
+# Date
+dt <- ymd('2000-01-01')
+
+# Create a duration of 5 years
+dw <- dyears(x=5)
+dw
+
+# Calculate warranty time 5 years after dt
+warranty_end <- dt+dw
+writeLines( paste('Warranty ends on:', warranty_end) )
+
+```
+
+**Interval**
+```{r}
+
+# Date
+dt <- ymd('2022-01-01')
+
+# Interval start
+i <- interval(start= "2021-01-01", end= "2022-12-31")
+i
+
+# Date within interval
+dt %within% i
+
+```
+**Time Zone**
+
+```{r}
+
+# System time zone
+Sys.timezone()
+
+# Creating a datetime object in another timezone
+ymd_hms('2022-01-01 00:00:00')
+ymd_hms('2022-01-01 00:00:00', tz='Europe/Paris')
+
+#--Display datetime in different time zone--
+
+# Date creation
+dt_dubai <- ymd_hms('2022-07-01 10:00:00', tz='Asia/Dubai')
+with_tz(dt_dubai, tzone='America/New_York')
+
+
+```
+
+## Datetime in text
+
+Parsing datetime objects from text.
+```{r}
+
+# Lubridate parsing
+mdy('The championship starts on 10/11-2000')
+
+```
+```{r}
+
+#--Parsing with Regex--
+
+# Text
+t <- "The movie was launched on 10/10/1980. It was a great hype at that time, being the most watched movie on the weeks of 10/10/1980, 10/17/1980, 10/24/1980. Around ten years later, it was chosen as the best picture of the decade. The cast received the prize on 09/20/1990."
+
+# Parse using regex
+str_extract_all(t, '[0-9]+/[0-9]+/[0-9]+')
+
+```
