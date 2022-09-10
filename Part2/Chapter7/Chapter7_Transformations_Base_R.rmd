@@ -1,0 +1,342 @@
+---
+title: "Chapter7_Transformations_Base_R"
+author: "Gustavo R Santos"
+date: '2022-07-21'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 7 - Transformations with base R
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+## Dataset
+
+The dataset to be used in this chapter is the *Adult Data Set* from the UCI Machine Learning Repository.
+
+**Dataset Credits:**
+Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
+
+**URL Address**
+https://archive.ics.uci.edu/ml/datasets/Adult
+
+
+### Import Libraries
+```{r}
+library(data.table)
+library(stringr)
+```
+
+
+### Loading the dataset
+
+```{r}
+
+# Load the dataset to RStudio
+df <- read.csv('https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data',
+               header=FALSE, strip.white = TRUE)
+
+# Add column names
+colnames(df) <- c('age', 'workclass', 'fnlwgt','education', 'education_num', 
+                  'marital_status', 'occupation', 'relationship', 'race', 'sex',
+                  'capital_gain', 'capital_loss','hours_per_week', 'native_country', 'target')
+
+head(df)
+
+```
+
+
+#### Slicing
+
+Slicing is like zooming in our dataset, looking only the parts we need or want to see.
+
+```{r}
+
+# Dataset dimensions
+dim(df)
+
+# Slicing rows 1 to 3, all columns
+df[1:3,]
+
+# Slicing all rows, columns 1 to 3
+df[,1:3]
+
+# Slicing with conditional, vector for cols 1 and 6
+df[df$age > 30 ,c(1,6)]
+
+```
+
+#### Filtering
+
+Filter differs from slice because the filter returns all the variables, so it won't be able to cut out some variables.
+
+```{r}
+
+# Filter
+subset(df, age > 30)
+
+
+# Slice with subset, returning only the selected columns
+subset( df, age > 30, select=c(age, marital_status) )
+
+```
+
+### Group by and summarize
+Group by will put the data in groups. Summarize will reduce the aggregated data values to one number, like mean, median, count etc.
+
+```{r}
+
+# Data frame to Data.table
+dt <- as.data.table(df)
+
+# Group By and count number of observations
+dt[, .N, by = sex]
+
+# Group By and return mean of age by sex
+dt[, mean(age), by = sex]
+
+# Group By and return sum of capital_gain by sex
+dt[, sum(capital_gain), by = sex]
+
+
+```
+
+**Group and visualize**
+```{r}
+
+# Mean education years by education level
+educ_yrs <- dt[, mean(education_num), by= education]
+educ_yrs <- educ_yrs[order(V1)]
+
+# barplot
+barplot(educ_yrs$V1, names.arg = educ_yrs$education, col='royalblue',
+        main='Average years of education by grade level')
+
+
+```
+
+### Replace and Fill values
+
+#### Replace
+
+Replace is to exchange a value for another.
+Fill values is when you have a `NA` value that needs to be filled with an average or another value, like zero.
+
+```{r}
+
+# Check for NA values
+sum(is.na(df))
+```
+
+```{r}
+# Replace "?" using slicing
+df$occupation[df$occupation == '?'] <- NA
+df[df$native_country == '?', 'native_country'] <- NA
+
+# Replace "?" with NA using gsub
+df$workclass <- gsub(pattern= '\\?', replacement= NA, df$workclass)
+
+# Replace "?" with ifelse
+df$native_country <- ifelse(df$native_country == '?', NA, df$native_country)
+
+# Check for NA values
+sum(is.na(df))
+
+```
+**Check missing data by column**
+```{r}
+
+library(skimr)
+
+skim(df)
+
+```
+
+#### Filling
+Common fill values are zero, mean, median, most frequent (for categorical).
+There are more complex ways to fill, using machine learning, but that is not in the scope of this book.
+
+```{r}
+
+#Fill NAs with most frequent value
+most_frequent <- names(table(df$workclass)[which.max(table(df$workclass))])
+df$workclass[is.na(df$workclass)] <- most_frequent
+
+# Occupation
+most_frequent <- names(table(df$occupation)[which.max(table(df$occupation))])
+df$occupation[is.na(df$occupation)] <- most_frequent
+
+# Remove all NAs (the remaining in native_country)
+df <-  na.omit(df)
+
+```
+
+**Filling NAs from Numeric columns**
+
+```{r}
+
+# Data frame
+df_num <- data.frame(A= c(1,2,2,2,3,NA),
+                     B= c(3,4,5,3,NA,0),
+                     C= c(1,1,1,NA,NA,5))
+
+# Fill NAs with 0
+nafill(df_num, type='const', fill=0)
+
+# Fill NAs with the last valid number
+nafill(df_num, type='locf')
+
+# Fill NAs with the next valid number
+nafill(df_num, type='nocb')
+
+# Fill NAs with mean
+df_num$A[is.na(df_num$A)] <- mean(df_num$A, na.rm = T)
+
+```
+
+
+### Arranging Data
+Arrange data is useful to rank items from top to bottom or vice-versa, creating ordinated datasets.
+
+```{r}
+
+# Arrange raw data
+df[order(df$age, decreasing = T),]
+
+# Arrange raw data using - instead of "decreasing=T"
+df[order(-df$age),]
+
+
+```
+Using data.table, we can group variables and order them.
+
+```{r}
+
+# Data frame to Data.table
+dt <- as.data.table(df)
+
+# Group and order education years average by workclass
+dt[, mean(education_num), by= workclass][order(-V1),]
+
+
+```
+
+
+### Creating New Variables
+During data wrangling, it is common to create new variables, being that for splitting an information or combining two or more variables to make a new one.
+
+Note: to create new columns in R, you can use `df$new_col_name` or `df['new_col_name]`
+
+```{r}
+
+# Binarizing sex using ifelse()
+df$sex_binary <- ifelse(df$sex == 'Female', 1, 0)
+df[,c(10,16)]
+
+```
+
+To Encode a variable, transforming the names in numbers, here is a solution.
+We will: 
+1. Assign the variable `education` as a factor
+2. Create order to the levels
+3. Store those orders in another variable
+4. Change the new variable to numbers
+
+```{r}
+## Encoding a variable ##
+# Assign education as factor
+df$education <- as.factor(df$education)
+# Order the factors
+df$education <- ordered(df$education, levels= c("Preschool", "1st-4th","5th-6th","7th-8th", "9th", "10th", "11th", "12th", "HS-grad", "Some-college", "Assoc-acdm", "Assoc-voc", "Bachelors", "Masters" , "Doctorate") )
+# Create new variable
+df$education_cd <- df$education
+# Change levels to numbers
+levels(df$education_cd) <- 1:15
+
+df[, c('education', 'education_cd')]
+
+```
+
+**Creating a custom calculation**
+Imagine that there were a rule in place that, for every `capital_gain` - `capital_loss` equal or greater than 15,000 there was a 10% tax.
+We will first create a `total` variable to show arithmetic operation and then calculate the 10% tax
+
+```{r}
+
+# Total gain variable creation
+df$total_gain <- df$capital_gain - df$capital_loss
+
+# Tax variable creation
+df$tax <- ifelse(df$total_gain >= 15000, df$total_gain *0.1, 0)
+
+df[,c(11,12,17,18)][order(-df$tax),]
+
+#---
+#Shorter code
+
+# Tax variable creation
+df$tax2 <- ifelse(df$total_gain >= 15000, (df$capital_gain - df$capital_loss) *0.1, 0)
+
+
+```
+
+### Binding
+
+Binding data is useful to glue pieces of data together.
+
+`rbind()` or bind rows glues the data by columns. So if your data has the same variables, you can use this function.
+```{r}
+
+# Creating datasets A and B
+A <- df[1:10, ]
+B <- df[11:20, ]
+
+# Append / bind rows
+AB <- rbind(A, B)
+AB
+
+```
+
+
+
+`cbind()` is to bind columns, gathering the data by rows. It is more suitable when the rows are for the same observation, but the columns are different and need to be put together.
+
+```{r}
+
+# Creating datasets A and B
+A <- df[1:10, 1:3]
+B <- df[1:10, c(4,7)]
+
+# Bind columns
+AB <- cbind(A, B)
+AB
+
+```
+
+### data.table
+Review of the library `data.table`
+
+Basic syntax
+DT[i, j, by]
+* *i* is for the rows selection or a condition for the rows to be displayed
+* *j* is to select the variables or to calculate a statistic of it
+* *by* is used to group variables
+
+```{r}
+
+# Assign variable as data.table object
+dt <- as.data.table(df)
+
+# Syntax
+dt[dt$age > 50, .(age, occupation)]
+
+# Mean age Group By relationship
+dt[, mean(age), by= relationship][order(-V1),]
+
+
+```
+
+
