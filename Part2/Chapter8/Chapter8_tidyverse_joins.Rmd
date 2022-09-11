@@ -1,0 +1,137 @@
+---
+title: "Chapter8_tidyverse_joins"
+author: "Gustavo R Santos"
+date: '2022-07-28'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 8 - Transformations with `tidyverse`
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+#### Import tidyverse
+```{r}
+library(tidyverse)
+```
+
+
+### Joining Datasets
+
+#### Creating tables
+Suppose you are a data scientist or engineer in a retail company and have three tables. One fact table, with measurements, and two dimension tables, with descriptions. Our goal is to use tidyverse functions to create all types of joins with the datasets.
+
+```{r}
+
+#Fact table
+sales <- data.frame(
+  date = c("2022-01-01", "2022-01-02", "2022-01-03", "2022-01-04", "2022-01-05"),
+  store_cd= c(1,2,3,4,5),
+  product_cd= c(1,2,3,4,5),
+  qty= c(10, 12, 9, 12,8), 
+  sales= c(30, 60, 45, 24, 32)
+  )
+
+#---
+#Dimension store
+stores <- data.frame(
+  store_cd= c(1,2,3,4,6),
+  address= c('1 main st', '20 side st','19 square blvd','101 first st','1002 retail ave'),
+  city= c('Main', 'East', 'West', 'North', 'South'), 
+  open_hours= c('7-23', '7-23', '9-21', '9-21', '9-21')
+  )
+
+#---
+#Dimension product
+products <- data.frame(
+  product_cd= c(1,2,3,4,6),
+  description= c('Soft drink', 'Frozen snack', 'Fruit', 'Water', 'Fruit 2'),
+  unit_price= c(3.0, 5.0, 5.0, 2.0, 4.0), 
+  unit_measure= c('each', 'each', 'kg', 'each', 'kg')
+  )
+
+```
+
+#### LEFT JOIN
+Returns everything from the left table and only the matches from the right table.
+If we want to know the description of the products, we can left join the sales table with the products table.
+* Left table: `sales`
+* Right table: `products`
+
+```{r}
+
+# Left join
+sales %>% 
+  left_join(products, by= 'product_cd')
+
+# Left join with selected columns from products
+sales %>% 
+  left_join(products[,1:2], by='product_cd')
+
+```
+
+
+#### RIGHT JOIN
+Returns everything from the right table and only the matches from the left table.
+If we want to join the sales number to the stores table, we can right join the stores table with the sales table.
+* Left table: `sales`
+* Right table: `stores`
+
+```{r}
+
+# Right join
+sales %>%
+  select(store_cd, sales) %>% 
+  right_join(stores, by= 'store_cd')
+
+```
+
+
+#### INNER JOIN
+Returns only the matching rows from the left and right tables.
+When we inner join tables, the result will be only the observations present in each table.
+* Left table: `sales`
+* Right table: `stores`
+
+
+```{r}
+
+# Inner join
+sales %>% 
+  inner_join(stores, by='store_cd')
+
+```
+
+
+#### FULL JOIN
+Returns all the rows from both tables.
+* Left table: `sales`
+* Right table: `stores`
+
+```{r}
+
+# Full join
+sales %>% full_join(stores)
+
+```
+
+#### ANTI-JOIN
+Returns all the rows from the left table that are NOT in the right table.
+* Left table: `sales`
+* Right table: `products`
+
+```{r}
+
+# Anti-join
+sales %>% anti_join(products)
+
+```
+
+
+
+
+
+

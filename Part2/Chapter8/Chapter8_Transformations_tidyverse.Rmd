@@ -1,0 +1,400 @@
+---
+title: "Chapter8_Transformations_tidyverse"
+author: "Gustavo R Santos"
+date: '2022-07-26'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 8 - Transformations with `tidyverse`
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+## Dataset
+
+The dataset to be used in this chapter is the *Adult Data Set* (also know as *Census Income*) from the UCI Machine Learning Repository.
+
+**Dataset Credits:**
+Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
+
+**URL Address**
+https://archive.ics.uci.edu/ml/datasets/Adult
+
+
+### Import Libraries
+```{r}
+
+library(tidyverse)
+```
+
+
+### Loading the dataset
+
+```{r}
+
+# Define column names
+header <- c('age', 'workclass', 'fnlwgt','education', 'education_num', 
+               'marital_status', 'occupation', 'relationship', 'race', 'sex',
+               'capital_gain', 'capital_loss','hours_per_week',
+               'native_country', 'target')
+
+# Load the dataset to RStudio
+df <- read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data', col_names = header , trim_ws = TRUE)
+
+head(df)
+
+```
+
+
+#### Slicing
+
+Slicing is like zooming in our dataset, looking only the parts we need or want to see.
+
+```{r}
+
+# Slicing rows 1 to 5, columns 1 to 4.
+df %>% .[1:5, c(1:4)]
+
+# Slicing with slice_min() and slice_max()
+df %>% slice_min(age, prop=0.10)
+df %>% slice_max(age, prop=0.30)
+
+# Slice sample
+df %>% slice_sample(n=10, replace=TRUE)
+
+```
+
+#### Filtering
+Filter returns all the variables for the observations that fulfill the filter condition. Using `select()`, we can also select only the wanted variables.
+
+```{r}
+
+# Filtering age over 30 years old
+df %>% filter(age > 30)
+
+# Filter age > 30 and selecting age and marital_status
+df %>% 
+  filter(age >30) %>% 
+  select(marital_status, age)
+
+# Distinct - removing duplicates
+df %>% distinct(sex)
+
+```
+
+### Group by and summarize
+Group by will put the data in groups. Summarize will reduce the aggregated data values to one number, like mean, median, count etc.
+
+This is how the functions behave when called alone
+```{r}
+
+# group by not summarized
+df %>% group_by(workclass)
+
+# summarise without group_by returning average age of the dataset
+df %>% summarise( age_avg = mean(age) )
+
+# Group By workclass and Summarize mean age
+df %>% 
+  group_by(workclass) %>% 
+  summarise(age_avg = mean(age))
+
+
+```
+
+Let's look at the object returned by dataset grouped by more than one variable. Notice that it is a grouped tibble. To make the return object be a regular tibble, use the function `ungroup()`.
+```{r}
+
+# Returns object grouped_df
+workclass_groups <- df %>%
+  group_by(workclass, sex) %>% 
+  summarise(age_avg = mean(age) )
+
+# Returns object tibble
+workclass_ungrouped <- df %>%
+  group_by(workclass, sex) %>% 
+  summarise(age_avg = mean(age) ) %>% 
+  ungroup()
+
+
+```
+**Summary Functions**
+Functions to be used with `summarise()`.
+
+```{r}
+
+# n() shows the count of observations in each group
+df %>% group_by(workclass) %>% summarise(n())
+
+# n_distinct() shows the count of unique observations in each group
+df %>% group_by(workclass) %>% summarise(n_distinct())
+
+# sum(!is.na()) shows the count of Non NA observations
+df %>% summarise(sum(!is.na(workclass)))
+
+# first() shows the first age value in each group
+# Similarly, you can use last() or nth()
+df %>% group_by(workclass) %>% summarise(first(age))
+
+# quantile() shows the top number that meets the quantile percentage chosen
+# In this case, 50% of the age observations are under what value by group
+df %>% group_by(workclass) %>% summarise(quantile(age, 0.5))
+
+# sd() shows standard deviation of a variable
+df %>% group_by(workclass) %>% summarise(sd(capital_gain))
+
+# Across function, to apply the function mean to the selected columns
+df %>% select(1,3,5,11,12,13) %>% 
+  summarise(across(everything(), mean))
+
+```
+
+### Replace and Fill values
+For this part of the exercise, let's create a custom function to count the NAs by column. It will be useful during the exercise.
+
+```{r}
+
+na_by_column <- function(df){
+  "Function that takes in a data frame and return a table with the NAs count by column.
+  * Input:
+  df: data frame
+  * Return
+  data.frame object
+  "
+  # New data frame to hold the results
+  df_na <- data.frame()
+  # Loop through variables, count NAs and add to a row
+  for ( variable in 1: length(colnames(df)) ){
+    df_na[variable,1] <- sum( is.na(df_replaced[variable]) )
+    }#close for loop
+  # change row names
+  rownames(df_na) <- colnames(df)
+  # change column name
+  colnames(df_na) <- 'NA count'
+  # return result
+  return(df_na)
+  
+}#close function
+
+```
+
+#### Replace
+
+Replace is to exchange a value for another. Here, we will replace the `?` with `NA`, so we can fill the NAs later.
+The first way to do that is using replace. 
+
+```{r}
+
+# Loop through variables looking for cells == "?"
+for (variable in colnames(df)){
+  print(
+    paste( variable,
+           dim( df[df[variable]=='?', variable])[1] )
+  )
+}
+
+# Replacing values "?" with NA, saving in a new dataset variable
+df_replaced <- df %>% 
+  mutate(workclass = replace(workclass, workclass == '?', NA),
+         occupation = replace(occupation, occupation == '?', NA),
+         native_country = replace(native_country, native_country == '?', NA))
+
+
+# Count NAs by variable
+na_by_column(df_replaced)
+
+```
+**NA_IF**
+But there is another way, much easier, by the way, using the function `na_if()`. Simply put, if a value is a given pattern, make it `NA`.
+```{r}
+
+# Replacing values "?" with NA
+df_replaced <- df %>% na_if('?') 
+
+
+# Count NAs by variable
+na_by_column(df_replaced)
+
+
+```
+
+
+
+#### Filling
+Fill values is when you have a `NA` value that needs to be filled with an average or another value, like zero.
+
+```{r}
+
+# Fill NA values with last or next valid value
+df_replaced %>% fill(workclass, occupation, native_country,
+                     .direction= 'down' )
+
+# Finding the most frequent entry
+m_freq_workcls <- names(table(df$workclass)[which.max(table(df$workclass))])
+m_freq_occup <- names(table(df$occupation)[which.max(table(df$occupation))])
+
+# Replace NA with the most frequent value
+df_no_na <- df_replaced %>%
+  replace_na(list(workclass= m_freq_workcls,
+                  occupation= m_freq_occup) )
+
+
+# Drop NAs and save the dataset in a new variable name
+df_no_na <- df_no_na %>% 
+  drop_na()
+
+
+```
+
+**Filling NAs from Numeric columns**
+
+```{r}
+
+# Data frame
+df_num <- data.frame(A= c(1,2,2,2,3,NA),
+                     B= c(3,4,5,3,NA,0),
+                     C= c(1,1,1,NA,NA,5))
+
+# Fill NAs for numeric columns with statistics measurements
+df_num %>% replace_na(list(A= median(df_num$A, na.rm = T),
+                           B= mean(df_num$B, na.rm = T),
+                           C= min(df_num$C, na.rm = T) ) )
+
+```
+
+
+### Arranging Data
+Arrange data is useful to rank items from top to bottom or vice-versa, creating ordinated datasets.
+
+```{r}
+
+# Arrange data in increasing order
+df_no_na %>% arrange(native_country)
+
+# Arrange data in decreasing order
+df_no_na %>% arrange( desc(native_country) )
+
+
+```
+
+Using `tidyverse` to group variables and order them.
+
+```{r}
+
+# Group and order average net gain by education level
+df_no_na %>%
+  group_by(education) %>% 
+  summarise(count=n(),
+            avg_net_gain= mean(capital_gain - capital_loss)) %>% 
+  arrange( desc(avg_net_gain) )
+
+```
+
+
+### Creating New Variables
+During data wrangling, it is common to create new variables, being that for splitting an information or combining two or more variables to make a new one.
+
+*Note: to create new columns in R, you can use `df$new_col_name` or `df['new_col_name]`*
+
+```{r}
+
+# Split variable target into sign and amount
+df_no_na %>% separate(target, into=c('sign', 'amt'), sep='\\b')
+
+# Unite variables sex, race and age
+df_no_na %>% 
+  unite(sex, race, age, col='description', sep='_', remove=FALSE)
+
+```
+
+**Creating a custom calculation**
+Imagine that there were a rule in place that, for every `capital_gain` - `capital_loss` equal or greater than 15,000 there was a 10% tax.
+We will first create a `total` variable to show arithmetic operation and then calculate the 10% tax
+
+```{r}
+
+# Tax variable creation
+df_no_na %>% 
+  mutate(total_gain = capital_gain - capital_loss,
+         tax= ifelse(total_gain >= 15000, 
+                     total_gain *0.1,
+                     0)  ) %>% 
+  arrange(desc(tax))
+
+
+```
+
+Let’s change <=50K to *under* and >50K to *over*.
+
+```{r}
+
+# Change values from target to over or under
+df_no_na %>% 
+  mutate( over_under= 
+            recode(target, '<=50K'='under', '>50K'='over')    ) %>% 
+  select(target, over_under)
+
+```
+
+Mutate and cut to see which observations are over or unde the average.
+
+```{r}
+
+# Observations over or under the average
+df_no_na %>% 
+  mutate( age_avg = mean(age),
+          over_under_age_avg= cut(age,
+                                  c(0, mean(age), max(age)),
+                                  c('Lower than avg', 'Above the avg'))  ) %>% 
+  select(age, age_avg, over_under_age_avg)
+
+```
+
+### Reshape
+Reshaping means to transform the dataset from wide format to long or vice versa.
+Roughly, we can say that:
+Wide format: variables are rows.
+Long format: variables are columns.
+
+```{r}
+# set seed to generate the same random numbers every run
+set.seed(42)
+
+# Create a dataset
+df_wide <- data.frame(
+  project = c('project1', 'project2','project3'),
+  Jan= sample(1000:2000, 3),
+  Feb= sample(1000:2000, 3),
+  Mar= sample(1000:2000, 3)
+)
+  
+# Wide to Long
+df_long <- df_wide %>% 
+  pivot_longer(cols= 2:4,
+               names_to = 'months',
+               values_to = 'expenses')
+
+# View in RStudio viewer
+View(df_long)
+
+```
+
+**Long to Wide**
+```{r}
+
+# Long to Wide
+View(df_long %>%
+  pivot_wider(names_from = 'months',
+              values_from = 'expenses'))
+
+```
+
+
+
+
+
+
+
