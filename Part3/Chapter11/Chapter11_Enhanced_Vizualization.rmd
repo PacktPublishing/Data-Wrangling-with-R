@@ -1,0 +1,265 @@
+---
+title: "Chapter11_Enhanced_Visualization"
+author: "Gustavo R Santos"
+date: '2022-08-26'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 11 - Enhanced Visualizations with ggplot2
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+
+## Import Libraries
+```{r}
+
+library(tidyverse)
+library(datasets)
+library(patchwork)
+library(plotly)
+
+```
+
+## Dataset
+
+In this chapter, we will use the dataset "diamonds", from the package datasets  to illustrate the plots.
+To make the code more generically applicable to any dataset, I will call it "df".
+```{r}
+
+# Loading the dataset
+data("diamonds")
+df <- diamonds
+
+remove(diamonds)
+
+```
+
+A regular scatterplot of the prices by carat will look busy. Observe.
+```{r}
+
+# Scatterplot of price by carat.
+ggplot(df) + 
+  geom_point( aes(x= carat, y= price, color= cut, alpha=0.5))
+
+```
+
+
+
+```{r}
+
+# Facet grid by cut of scatterplot price by carat
+ggplot(df) + 
+  geom_point( aes(x= carat, y= price, color= cut, alpha=0.5)) +
+  facet_grid( rows= vars(cut) )
+
+```
+
+
+
+
+```{r}
+
+# Facet grid by cut and clarity of scatterplot price by carat
+ggplot(df) + 
+  geom_point( aes(x= carat, y= price, color= cut, alpha=0.5)) +
+  facet_grid( rows = vars(cut), cols= vars(clarity) )
+
+```
+
+**Facet wrap**
+
+It forces the grid into a rectangular form.
+
+```{r}
+
+# Facet wrap by cut of scatterplot price by carat
+ggplot(df) + 
+  geom_point( aes(x= carat, y= price, color= cut, alpha=0.5)) +
+  facet_wrap( vars(cut) )
+
+```
+
+### Map plots
+
+Maps are good to plot information based on locations.
+
+Let's load a file with location information about the USA states and their GDP in 2021.
+https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_GDP
+
+```{r}
+
+# Load the CSV file
+states <- read_csv('USA_states.csv')
+
+```
+
+Now, to create a map, we use the `geom_map()` function.
+
+```{r}
+
+# Loading the map of the USA states from ggplot2
+us <- map_data('state')
+
+# Plot only the USA map
+ggplot(us) + 
+  geom_map( aes(long, lat, map_id= region), map=us,
+            color="black", fill='lightgray') +
+  theme_void()
+```
+
+Now let's plot the USA Map with the capital cities marked.
+
+```{r}
+# Names of the states to lower case
+states <- states %>% mutate(state= str_to_lower(state))
+
+# Mapping the location of the state capitals
+us_map <- ggplot(states) + 
+  geom_map( aes(longitude, latitude, map_id= state), map=us,
+            color="black", fill='lightgray') + 
+  xlim(-130,-60) +
+  ylim(20,55) +
+  theme_void()
+
+options(scipen=999)
+
+# Adding the capital of the states locations.
+us_map +
+  geom_point( aes(x=longitude, y=latitude, size= GDP/1000000, fill= GDP),
+              shape=24 ) +
+  labs(title='USA states and the capital cities',
+       subtitle= '
+       The triangle is the location of the capital of the state.
+       The bigger the triangle, the higher is the state GDP
+       (USD Millions)')
+
+
+```
+
+
+We can also add the state names to the plot.
+
+```{r}
+
+# Mapping the location of the state capitals
+ggplot(states) + 
+  geom_map( aes(longitude, latitude, map_id= state), map=us,
+            color="black", fill='lightgray') + 
+  geom_point( aes(x=longitude, y=latitude), fill= 'coral', shape=24 ) +
+  geom_text(data=states, 
+            aes(x=longitude, y=latitude, label=state_cd),
+            nudge_x= 2, color='darkred') +
+  xlim(-130,-60) +
+  ylim(20,55) +
+  theme_void()
+```
+
+
+
+### 3D Plots
+
+We can used 3D graphics to represent surfaces. To plot 3D, use the library **plotly**.
+
+```{r}
+
+# Set seet for reproduceability
+set.seed(42)
+
+# Creating a random surface
+surface <- matrix(as.integer( sort( abs(runif(160,90, 180)) ) ),
+            nrow=80, ncol=20)
+
+
+# Plotting the surface
+plot_ly(z=~surface) %>% add_surface()
+
+
+```
+
+Another good use of 3D graphics is to see the dimension where the separation of the points occur. Imagine you have tow variables points really close to each other and the separation happens on a third dimension.
+That can be seen on a 3D plot.
+
+```{r}
+
+set.seed(42)
+
+# Variables
+var1= rnorm(20, mean=25, sd=5)
+var2= var1+0.1
+#data frame
+my_data <- data.frame(var1= var1,
+                      var2= var2,
+                      var3= 1:20,
+                      var4= rep(c('A','B'),each=10) )
+
+# Plot 2D
+ggplot(my_data) + geom_point( aes(x=var1, y=var2, color=var4) )
+```
+
+The 3D plot
+```{r}
+# Plot 3D
+plot_ly(my_data, x=~var1, y=~var2, z=~var3, 
+        color=~var4, colors=c('royalblue', 'coral') ) %>%  add_markers()
+
+```
+
+```{r}
+
+set.seed(42)
+
+#data frame
+my_data <- data.frame(var1= rnorm(2000, mean=25, sd=5),
+                 var2= rnorm(2000),
+                 var3= rnorm(2000)
+                  )
+
+# Plot 3D
+plot_ly(my_data, x=~var1, y=~var2, z=~var3, 
+        color=~var3, colors=c('royalblue', 'coral', 'yellow') ) %>%  add_markers()
+
+```
+
+
+
+### Adding interactivity to the graphics
+Add interactivity is helpful because a graphic becomes  ready for a more in-depth analysis, being able to zoom in and out, for example.
+To create an interactive plot out of ggplot2 graphic, just combine it with plotly function `ggplotly()`.
+
+```{r}
+
+# Interactive scatter plot
+
+# Scatterplot of price by carat.
+ggplotly(
+  ggplot(df) + 
+  geom_point( aes(x= carat, y= price, color= cut, alpha=0.5))
+)
+
+```
+
+```{r}
+
+#Interactive bar plot
+ggplotly(
+  ggplot(df) + 
+  geom_bar( aes(x= cut))
+)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
