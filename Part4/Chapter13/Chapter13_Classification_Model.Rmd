@@ -1,0 +1,672 @@
+---
+title: "Chapter13_Classification_Model"
+author: "Gustavo R Santos"
+date: '2022-08-31'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 13 - Building a Model with R
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+## Dataset
+
+The dataset to be used in this project is the *Spambase* from the UCI Machine Learning Repository.
+
+**Dataset Credits:**
+Creators:
+Mark Hopkins, Erik Reeber, George Forman, Jaap Suermondt
+
+Donor:
+George Forman
+
+**URL Address**
+  https://archive.ics.uci.edu/ml/datasets/spambase
+
+
+### Loading libraries
+```{r}
+# Data Wrangling
+library(tidyverse)
+# Organize plots on the same figure
+library(patchwork)
+# Descriptive statistics
+library(skimr)
+# Modeling
+library(randomForest)
+# Confusion Matrix
+library(caret)
+# ROC plot
+library(ROCR)
+
+```
+
+
+###
+### Loading Dataset
+```{r}
+
+# Link where the dataset is located in UCI database 
+url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data'
+
+# String of headers
+headers <- c('word_freq_make','word_freq_address','word_freq_all','word_freq_3d',
+             'word_freq_our','word_freq_over','word_freq_remove','word_freq_internet',
+             'word_freq_order','word_freq_mail','word_freq_receive','word_freq_will',
+             'word_freq_people','word_freq_report','word_freq_addresses','word_freq_free',
+             'word_freq_business','word_freq_email','word_freq_you','word_freq_credit',
+             'word_freq_your','word_freq_font','word_freq_000','word_freq_money','word_freq_hp',
+             'word_freq_hpl','word_freq_george','word_freq_650','word_freq_lab','word_freq_labs',
+             'word_freq_telnet','word_freq_857','word_freq_data','word_freq_415','word_freq_85',
+             'word_freq_technology','word_freq_1999','word_freq_parts','word_freq_pm',
+             'word_freq_direct','word_freq_cs','word_freq_meeting','word_freq_original',
+             'word_freq_project','word_freq_re','word_freq_edu','word_freq_table',
+             'word_freq_conference','char_freq_semicolon','char_freq_parenthesis',
+             'char_freq_squarebrkt','char_freq_exclam','char_freq_dollar','char_freq_hashtag',
+             'capital_run_length_average','capital_run_length_longest',
+             'capital_run_length_total', 'spam')
+
+# Load the dataset
+spam <- read_csv(url, col_names = headers, trim_ws = TRUE)
+
+# Clean R environment
+remove(headers, url)
+
+```
+
+
+
+
+###
+### Understanding the Data
+
+* This dataset has 4601 rows and 58 columns (57 explanatory variables and 1 target).
+* Once we look at the glimpse, we should notice that all the variables are of the type *double*, or real numbers.
+* As per the documentation of the dataset, the numbers for the explanatory variables starting with *word_freq_WORD* mean the percentage of words in the e-mail that match "WORD". 
+* The same is valid for char_freq_CHAR.
+* The variables *capital_run_length_* are measurements related to the quantity of consecutive letters written in caps.
+
+```{r}
+
+# Data dimensions
+dim(spam)
+
+# Glimpse of the data
+glimpse(spam)
+
+```
+Once the dataset is correctly loaded, the next step is to convert the variable types as needed.
+The target variable `spam` will be converted to factor.
+The three `capital_run_length_xxx` will be converted to integer.
+
+```{r}
+
+# Columns to change to factor
+cols_to_int <- c('capital_run_length_average', 'capital_run_length_longest', 'capital_run_length_total')
+cols_to_factor <- c('spam')
+
+# Assign variables as factor
+spam <- spam %>% 
+  mutate_at(cols_to_int, as.integer) %>% 
+  mutate_at(cols_to_factor, factor)
+
+# Check result
+glimpse(spam)
+
+# Remove variable to keep environment clean
+remove(cols_to_factor, cols_to_int)
+```
+
+
+###
+### Missing Data
+
+Let's look if this dataset has missing values.
+
+```{r}
+
+# Check for NA
+sum( is.na(spam) )
+
+```
+There are no missing values, so we can move on with the exploration.
+
+
+###
+### Exploratory Analysis
+
+In the exploration phase, we can start with the descriptive statistics, to learn more about the variables distributions.
+
+```{r}
+
+# Configure display not scientific numbers
+options(scipen = 999, digits=3)
+
+# Descriptive statistics
+skim(spam)
+
+```
+* We can note that there are many means close to zero, therefore the majority of the variables never go too high. 
+* There are some variables with more than 75% of the observations with zeroes.
+* The stantard deviations are high, denoting presence of outliers or highly spread data.
+* The histograms may be skewed to the right.
+Let's check the histograms next.
+
+#### Histograms
+
+After looking at the descriptive statistics, we can plot the histograms to have a visualization of the distributions.
+
+```{r}
+# Histograms
+for (var in colnames(spam)[1:57]) {
+  hist(unlist(spam[,var]), col='royalblue',
+       main= paste('Histogram of', var),
+       xlab=var)
+}
+
+```
+
+All the histograms show values concentrated around the zero.
+
+#### Boxplots
+
+Let's check for the presence of outliers
+
+```{r}
+# Histograms
+for (var in colnames(spam)[1:57]) {
+  boxplot(unlist(spam[,var]),
+          horizontal = TRUE,
+          col='royalblue',
+          main= paste('Boxplot of', var),
+          xlab=var)
+}
+
+```
+
+
+As expected after we checked the descriptive statistics, we confirmed that the data has a lot of outliers.
+
+Next, we will check what is the proportions of Spam and Not Spam in the dataset. Our expectation is to see usually numbers close to the 50-50 ratio.
+```{r}
+
+# Spam vs Not Spam proportion to data frame
+spam_prop <- data.frame( prop.table( table(spam$spam) ) )
+# column names
+colnames(spam_prop) <- c('spam', 'Freq')
+
+# Spam vs Not Spam proportion
+ggplot(spam_prop) + 
+  geom_col( aes(x=spam, y=Freq, fill=spam )) +
+  geom_text(aes(x=spam, y=Freq, 
+                label = paste( round(Freq,1)*100, "%")), 
+            vjust = 1.5, colour = 'white') +
+  ggtitle('Proportion of each label in the dataset | Spam (1), Not spam (0)') +
+  theme_classic()
+
+```
+
+
+```{r}
+# Pivot the table to Long format 
+long_spam <- spam %>% 
+  pivot_longer(cols=1:57, names_to= 'words', values_to = 'pct')
+
+# Top 10 plot
+long_spam %>% 
+  filter(str_detect(words,'word_') & spam == 1) %>%
+  ggplot()+
+  geom_boxplot( aes(y=reorder(words,pct), x=pct, fill=spam))+
+  ggtitle('Percentages of words and their association with spam e-mails') +
+  labs(subtitle= 'The frequency of appearance of some words in e-mails is more associated with spam.') +
+  labs(x= 'Percentage', y= 'Word') + 
+  theme_classic() + 
+  theme(plot.subtitle = element_text(color = "darkgray", size=11) )
+
+
+```
+
+Top 20 plot.
+
+```{r}
+
+# Median
+top20 <- long_spam %>% 
+  filter(str_detect(words,'word_') & spam == 1) %>%
+  group_by(words) %>% summarise(mean_pct=mean(pct)) %>% 
+  arrange(desc(mean_pct)) %>% head(20) %>% 
+  ungroup()
+
+# Top 15 plot
+long_spam %>% 
+  filter(str_detect(words,'word_') & spam == 1 & words %in% top20$words) %>%
+  ggplot()+
+  geom_boxplot( aes(y=reorder(words,pct), x=pct, fill=spam))+
+  ggtitle('Percentages of words and their association with spam') +
+  labs(subtitle= 'The frequency of appearance of some words in e-mails is associated with spam.') +
+  labs(x= 'Percentage', y= 'Word') + 
+  theme_classic() + 
+  theme(plot.subtitle = element_text(color = "darkgray", size=11) )
+
+# Clean environment
+remove(top20, long_spam)
+
+```
+
+
+#### Spam words
+
+Let's check the impact of the top 23 words more associated with spam e-mails and how it affects the message being considered spam or not.
+
+```{r}
+
+# Define top words
+top_words <- c('word_freq_you', 'word_freq_your', 'word_freq_will', 'word_freq_free',
+               'word_freq_our', 'word_freq_all', 'word_freq_mail', 'word_freq_email',
+               'word_freq_business', 'word_freq_remove', 'word_freq_000', 'word_freq_font',
+               'word_freq_money', 'word_freq_internet', 'word_freq_credit','word_freq_over',
+               'word_freq_order', 'word_freq_3d', 'word_freq_address', 'word_freq_make', 
+               'word_freq_people','word_freq_re','word_freq_receive', 'spam')
+
+# Select only columns with top words
+top_df <- spam %>% 
+  select(all_of(top_words)) %>% 
+# Add total percentage
+  mutate(top_w_pct= rowSums(across(where(is.numeric))) )
+
+# Plot bar graphic for top 23 words
+g1 = ggplot(top_df) +
+  geom_boxplot(aes(y= spam, x= top_w_pct), fill= c('royalblue', 'coral')) +
+  ggtitle('How spam associated words impacts the classification (TOP 23)')+
+  labs(subtitle= 'Spam emails(1) have a higher percentage of those words.') +
+  theme_classic()
+
+
+# Select only columns with top words
+spam2 <- spam %>% 
+# Add total percentage
+  mutate(w_pct= rowSums(across(where(is.numeric))) )
+
+# Plot bar graphic for the entire dataset
+g2 = ggplot(spam2) +
+  geom_boxplot(aes(y= spam, x= w_pct), fill= c('royalblue', 'coral')) +
+  ggtitle('How spam associated words impacts the classification')+
+  labs(subtitle= 'Spam emails(1) have a higher percentage of those words.') +
+  theme_classic()
+
+# patchwork
+(g1|g2)
+
+```
+The boxplot shows us a similar result of T-tests to compare averages. Therefore, if we perform the statistical test of Kolmogorov-Smirnov (*it tests the differences between the empirical cumulative distributions of two non-normal samples*), it should confirm that the samples are statistically different.
+**Hypothesis test:**
+* Ho: (p > 0.05) samples not statistically different
+* Ha: (p <= 0.05) samples are statistically different
+
+```{r}
+
+# Kolmogorov-Smirnov test
+yes_spam <- top_df[top_df$spam == 1,]$top_w_pct
+not_spam <- top_df[top_df$spam == 0,]$top_w_pct
+
+ks.test(yes_spam, not_spam)
+
+```
+
+Since the *p-value* returned very close to zero, we have enough statistical evidence to reject the null hypothesis in favor of the alternative, confirming that the samples are not equal.
+
+
+Testing the impact of characters in the classification of the email as spam or not.
+
+```{r}
+
+# Add 
+
+# Define business words
+char_words <- c('char_freq_semicolon', 'char_freq_parenthesis', 'char_freq_squarebrkt',
+               'char_freq_exclam', 'char_freq_dollar', 'char_freq_hashtag', 'spam')
+
+# Select only columns with characters
+char_df <- spam %>% 
+  select(all_of(char_words)) %>% 
+# Add total percentage
+  pivot_longer(cols=!c(spam), names_to = 'character', values_to = 'char_pct' ) %>% 
+  filter(spam == 1)
+
+
+# Plot bar graphic
+ggplot(char_df) +
+  geom_boxplot(aes(y= reorder(character, char_pct), x= char_pct, fill= spam)) +
+  labs(title='How the presence of charachters in e-mails impacts the classification',
+       subtitle= 'The spam emails(1) have a higher percentage of those characters.',
+       y= 'Character') +
+  theme_classic()
+```
+
+Kolmogorov-Smirnov Test of samples
+```{r}
+
+#Characters only
+char_df <- spam %>% 
+  select(all_of(char_words)) %>% 
+# Add total percentage
+  pivot_longer(cols=!c(spam), names_to = 'character', values_to = 'char_pct' )
+
+# Kolmogorov-Smirnov test
+yes_spam <- char_df[char_df$spam == 1,]$char_pct
+not_spam <- char_df[char_df$spam == 0,]$char_pct
+
+ks.test(yes_spam, not_spam)
+
+```
+There is an impact whether there are many characters or not.
+
+
+Testing the impact of CAPITAL letters in the classification of the email as spam or not.
+
+```{r}
+
+# Define variables with capital letters
+capital <- c('capital_run_length_average', 'capital_run_length_longest',
+             'capital_run_length_total', 'spam')
+
+# Select only columns with business words
+caps_df <- spam %>% select(all_of(capital))
+
+
+# Plot bar graphic
+g1= ggplot(caps_df) +
+  geom_boxplot(aes(y= spam, x= capital_run_length_average), fill= c('royalblue', 'coral')) +
+  labs(title='Capital Letters Avg vs. Spam classification',
+       x='Avg CAPS letters') +
+  theme_classic()+
+  theme(plot.title = element_text(size = 12))
+
+g2= ggplot(caps_df) +
+  geom_boxplot(aes(y= spam, x= capital_run_length_longest), fill= c('royalblue', 'coral')) +
+  labs(title='Capital Letters Longest vs. Spam classification',
+       x='Longest CAPS letters') +
+  theme_classic()+
+  theme(plot.title = element_text(size = 12))
+
+g3= ggplot(caps_df) +
+  geom_boxplot(aes(y= spam, x= capital_run_length_total), fill= c('royalblue', 'coral')) +
+  labs(title='Capital Letters Total vs. Spam classification',
+       x='Total CAPS letters') +
+  theme_classic()+
+  theme(plot.title = element_text(size = 12))
+
+# Patchwork - All in the same figure side-by-side
+(g1|g2|g3)
+
+remove(g1, g2, g3)
+
+```
+
+Kolmogorov-Smirnov Test of samples
+```{r}
+
+# Kolmogorov-Smirnov test
+yes_spam <- caps_df[caps_df$spam == 1,]$capital_run_length_total
+not_spam <- caps_df[caps_df$spam == 0,]$capital_run_length_total
+
+ks.test(yes_spam, not_spam)
+
+# Clean environment
+remove(yes_spam, not_spam, caps_df)
+```
+
+After the exploration and testing, we conclude that there are a few words more associated with spam, the presence of characters and capital letters.
+Let's transform our data to make it simpler and more generalizable before modeling.
+
+
+###
+### Transforming the data
+
+The transformation will be to combine the top 20 words in a single variable, characters in another and the total of capitals in a third variable.
+
+```{r}
+
+# Creating the dataset input for modeling
+
+# Add column top_w_pct
+spam_for_model <- spam %>% 
+  bind_cols(top_w_pct = top_df$top_w_pct) %>% 
+# Select needed variables for modeling
+  select(spam, top_w_pct, char_freq_exclam, char_freq_parenthesis, char_freq_dollar, capital_run_length_total, capital_run_length_longest)
+
+# Clean environment
+#remove(char_df, caps_df, char_words, top_df, top_words, capital)
+
+```
+
+
+
+###
+### Modeling
+
+```{r}
+
+# Seed for reproduce the same result for random numbers
+set.seed(17)
+
+# Replace the binary 1(spam) and 0(not_spam)
+spam_for_model <- spam_for_model %>% 
+  mutate( spam= recode(spam, '1'='is_spam','0'='not_spam')    )
+
+# Create index for random train test split
+number_of_rows <- nrow(spam_for_model)
+idx <- sample(1:number_of_rows, size = 0.8*number_of_rows)
+
+# Split in train and test datasets
+train <- spam_for_model[idx,]
+test <- spam_for_model[-idx,]
+```
+
+```{r}
+
+# Label proportions of the train set
+writeLines("Train set:")
+prop.table( table(train$spam))
+writeLines('=========================')
+
+# Label proportions of the test set
+writeLines("Test set:")
+prop.table( table(test$spam))
+```
+
+
+
+```{r}
+# Training the model
+rf <- randomForest(spam ~ ., data=train, 
+                   importance=TRUE, ntree= 250)
+
+```
+
+Let's see the performance of the trained model.
+```{r}
+# Model performance
+plot(rf)
+```
+
+
+```{r}
+# Predictions
+preds <- predict(rf, test)
+
+```
+
+
+###
+### Evaluating Errors
+
+Evaluating the model is very important to to know where the model is making mistakes.
+The first step is to look at the confusion matrix, as that will show us the false positives (Type 1 error: say it is spam when it is not) and the false negatives (Type 2 error: say it is not_spam when it is)
+
+```{r}
+
+# Confusion Matrix
+confusionMatrix(preds, test$spam)
+
+```
+
+
+Checking variables importance
+
+```{r}
+# Variable importance plot
+varImpPlot(rf)
+
+```
+
+Let's look at the partial dependency plot.
+
+```{r}
+
+par(mfrow=c(2,3))
+
+partialPlot(rf, as.data.frame(train), top_w_pct, 'is_spam')
+partialPlot(rf, as.data.frame(train), char_freq_exclam, 'is_spam')
+partialPlot(rf, as.data.frame(train), char_freq_parenthesis, 'is_spam')
+partialPlot(rf, as.data.frame(train), char_freq_dollar, 'is_spam')
+partialPlot(rf, as.data.frame(train), capital_run_length_total, 'is_spam')
+partialPlot(rf, as.data.frame(train), capital_run_length_longest, 'is_spam')
+
+par(mfrow=c(1,1))
+
+```
+
+
+```{r}
+
+# Predictions probability of not_spam
+predictions <- data.frame(predict(rf, test, type='prob'))
+
+# Predictions for ROC
+pred_roc <- prediction(predictions$not_spam, test$spam)
+
+# ROC curve
+roc <- performance(pred_roc,"tpr","fpr")
+plot(roc, colorize = T, lwd = 2)
+abline(0.0, 1.0) 
+
+
+```
+
+
+
+###
+### Testing
+
+Let's tests the model with any random text.
+
+```{r}
+
+text1 <- 'SALE!! SALE!! SALE!! SUPER SALEEEE!! This is one of the best sales of the year! More than #3000# products with discounts up to $500 off!! Visit our page and Save $$$ now! Order your product NOW (here) and get one for free !'
+
+text2 <- 'DEAR MR. JOHN, You will find enclosed the file we talked about during your meeting earlier today. The attachment received here is also available in our web site at this address: www.DUMMYSITE.com. Sale.'
+
+```
+
+But we know the model takes input as a data frame with 6 variables. Therefore, we will have to transform this text in the same format as the input.
+Let's create a function that does the transformation.
+
+```{r}
+spam_words <- c('you', 'your', 'will', 'free', 'our', 'all', 'mail', 'email', 'business', 'remove', '000', 'font', 'money', 'internet', 'credit', 'over', 'order', '3d', 'address', 'make', 'people', 're', 'receive', 'sale')
+```
+
+
+```{r}
+# Creating a function to prepare any text for input in the model
+prepare_input <- function (text, spam_words){
+  "This function takes a string text as input, counts the quantities of !, $, (), uppercase letters, longest sequence of uppercase, words in the spam list.
+  * Input: string
+  * Returns: data frame for input in the RF model"
+  
+  # Counts of the punctuation
+  exclamation <- str_count(text, pattern="[!]")
+  parenthesis <-  str_count(text, pattern="[()]")
+  dollar_sign <-  str_count(text, pattern="[$]")
+  
+  # Counts of UPPERCASE
+  total_uppercase <- str_count(text, "[A-Z]")
+  
+  # Remove punctuation for total words count
+  text_no_puncuation <- str_remove_all(text, pattern="[:punct:]|[$]*")
+  
+  #longest_uppercase
+  all_words <- str_split(text_no_puncuation, " ")
+  all_words <- all_words[[1]]
+  
+  # Create a vector with all the uppercase counts
+  char_counts <- c()
+  for (word in all_words) {
+    if (word == toupper(word)) {
+      char_counts <- c(char_counts, nchar(word))
+    } #enf if
+  }#end for
+  
+  # Get only the longest uppercase word size
+  if (max(char_counts) < 0) {
+    longest_upper <- 0} else {longest_upper <- max(char_counts)}
+  
+  
+  # Count how many spam words are in the text
+  # Create a counter of spam words
+  top_w <- 0
+  # For each word
+  for (word in all_words) {
+    # if word is in the spam list, count +1
+    if (tolower(word) %in% spam_words) {
+      top_w <- top_w + 1
+    } #enf if
+  }#end for
+  
+  # Determine length of the text
+  text_length <- length(all_words)
+  
+  # Create a data frame with all counts in percentages (divided by the text length)
+  input <- data.frame(top_w_pct= 100*top_w / text_length,
+                      char_freq_exclam= 100*exclamation / text_length,
+                      char_freq_parenthesis= 100*parenthesis / text_length,
+                      char_freq_dollar= 100*dollar_sign / text_length,
+                      capital_run_length_total= total_uppercase,
+                      capital_run_length_longest= longest_upper )
+  
+return(input)
+} #end function
+
+```
+
+```{r}
+
+# Predicting text 1
+input <- prepare_input(text1, spam_words= spam_words)
+#Predict
+data.frame(predict(rf, input, type='prob'))
+
+# Predicting text 2
+input <- prepare_input(text2, spam_words = spam_words)
+#Predict
+data.frame(predict(rf, input, type='prob'))
+
+
+```
+
+
+
+
+###
+
+```{r}
+# Saving the model
+saveRDS(rf, "rf_model.rds")
+
+```
+
+**END**
