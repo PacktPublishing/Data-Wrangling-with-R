@@ -42,8 +42,9 @@ write_csv()
 ```
 
 
+## Loagind CSV files
 
-3. Next we are going to load the same dataset *Orange* from a CSV file in our local machine.
+3.1 Next we are going to load the same dataset *Orange* from a CSV file in our local machine.
 
 ```{r}
 # Load dataset from csv using base R
@@ -52,7 +53,7 @@ df <-  read.csv(path)
 ```
 
 
-4. We can also load a csv file using the *readr* library from the *tidyverse* package.
+3.2. We can also load a csv file using the *readr* library from the *tidyverse* package.
 
 ```{r}
 # Load dataset from csv using tidyverse
@@ -65,6 +66,20 @@ path = 'C:/Users/.../oranges.csv'
 # Load the file
 df <-  read_csv(path)
 ```
+
+3.3 Another option is to load a csv file is `fread()` function from the *data.table* package.
+
+```{r}
+# Load the library
+library(data.table)
+
+# setup the file path
+path = 'C:/Users/.../oranges.csv'
+
+# Load the file
+df <-  data.table::fread(path)
+```
+
 
 We can list the strings that should be considered missing values (NA).
 In the example below, we're considering blank values and "No Record".
@@ -88,8 +103,8 @@ df %>% head(3)
 
 
 
-5. Tibble vs Dataframe
-5.1 Printing
+## 4. Tibble vs Dataframe
+4.1 Printing
 
 Tibble can print all the variables in the console screen.
 
@@ -107,7 +122,7 @@ Or you can also use the View function to access the built-in viewer from RStudio
 View(world_bank_pop)
 ```
 
-5.2 Column Names
+4.2 Column Names
 data.frame won't accept non-standard column names unless it changes it.
 Notice that *my column* will become *my.column*
 
@@ -118,6 +133,90 @@ Tibble accepts it and won't change it.
 
 ```{r}
 tibble(`my column` = c(1,2,3))
+
+```
+
+## Comparisons: `read.csv()` or `read_csv()`?
+
+In this section, let's compare the performances of the CSV readers when loading files in R.
+We will track how much time the software takes to load a file with one million observations using both functions.
+
+```{r}
+
+n_observations <- 735999
+
+# Creating a dataset
+data_test <- data.frame(
+  ID = 1:n_observations,
+  var1 = runif(n_observations),
+  var2 = rexp(n_observations),
+  var3 = rnorm(n_observations)
+)
+
+# Saving it to local drive
+write.csv(data_test, 'test_data.csv', row.names = F)
+
+
+```
+
+First, let's track the time to load the file using `read.csv()`.
+
+```{r}
+
+start <- Sys.time()
+
+df <- read.csv('test_data.csv')
+
+end <- Sys.time()
+
+time_read.csv <- as.numeric(end - start)
+
+writeLines( paste('Time elapsed:', time_read.csv ) )
+
+```
+
+Next, let's track the time to load the file using `read_csv()`.
+
+```{r}
+
+start <- Sys.time()
+
+df <- read_csv('test_data.csv')
+
+end <- Sys.time()
+
+time_read_csv <- as.numeric(end - start)
+
+writeLines( paste('Time elapsed:', time_read_csv ) )
+
+```
+
+
+First, let's track the time to load the file using `read.csv()`.
+
+```{r}
+
+start <- Sys.time()
+
+df <- data.table::fread('test_data.csv')
+
+end <- Sys.time()
+
+time_fread <- as.numeric(end - start)
+
+writeLines( paste('Time elapsed:', time_fread ) )
+
+```
+Comparing times:
+
+```{r}
+
+barplot(
+  c(time_read.csv, time_read_csv, time_fread),
+  names.arg = c('read.csv', 'read_csv', 'fread'),
+  col = 'royalblue', ylab = 'Time in Seconds',
+  main = 'Comparison of time elapsed to read CSV file'
+)
 
 ```
 
