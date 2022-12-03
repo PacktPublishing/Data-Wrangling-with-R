@@ -23,6 +23,10 @@ This library is part of the `tidyverse` package and brings you many tools to wor
 library(tidyverse)
 library(stringr)
 library(gutenbergr)
+library(tidytext)
+library(SnowballC)
+library(tm)
+library(textstem)
 
 ```
 
@@ -220,4 +224,249 @@ shop_list <- c('bananas', 'strawberries', 'avocado', 'pasta')
 str_sort(shop_list, decreasing = FALSE)
 
 ```
+
+
+# Text Mining with `tidytext`
+
+Let's load a book from the `gutenberg` library.
+
+```{r}
+# Downloading "The Time Machine" by H. G Wells
+book <- gutenberg_download(gutenberg_id = 35)
+
+book
+
+```
+Let's tokenize the book.
+
+```{r}
+
+# Tokenization
+book %>% 
+  unnest_tokens(output='tokens', input= text)
+  
+```
+Cleaning stop words.
+
+```{r}
+
+# Tokenization and clean stop words
+clean_tokens <- book %>% 
+  unnest_tokens(output='tokens', input= text) %>% 
+  anti_join(stop_words, by= c('tokens' = 'word'))
+
+clean_tokens
+```
+
+Let's make a word count now.
+
+
+```{r}
+
+# Counting words frequency
+clean_tokens %>% 
+  count(tokens, sort=TRUE)
+
+```
+
+
+## Stemming
+Stemming uses the stem (root) of the word to reduce the number of variations of a word in an analysis. This way, word variations like say, saying will be reduced to its root "sai", what not always will make sense, but still can be useful.
+
+```{r}
+# Stemming
+clean_tokens %>%
+  mutate(stem = wordStem(tokens)) %>%
+  count(stem, sort = TRUE)
+
+```
+
+## Lemmatization
+Lemmatization, on the other hand, will rely on the word’s lemma, that is the word’s basic meaning. The lemma takes in account the context in which the word is being used. Hence, the same words say, saying will become simply say, that is the basic meaning of both variations.
+
+Here is a function to take in a text object and create a clean Corpus
+
+```{r}
+"This function takes the text in, transforms it in a corpus object and cleans it, removing punctuation, white spaces, stopwords."
+
+clean_corpus <- function(text) {
+  # Transform text to Corpus, so we have the functions
+  corp <- Corpus(VectorSource(text))
+  # All text to lowercase
+  corp <- tm_map(corp, tolower)
+  # ---Cleaning ---
+  corp <- corp %>%
+  # Text to Plain text
+    tm_map(PlainTextDocument) %>%
+    # Removing numbers
+    tm_map(removeNumbers) %>%
+    # Removing punctuation
+    tm_map(removePunctuation) %>%
+    # Removing stopwords
+    tm_map(removeWords, c(stopwords('english'), '...', '”', '—')) %>%
+    # Strip white space
+    tm_map(stripWhitespace)
+}
+
+```
+
+Let's apply the function to our book
+
+```{r}
+# Clean text
+clean_text <- clean_corpus(book$text)
+
+# Lemmatization
+clean_lem <- tm_map(clean_text, lemmatize_strings)
+TDM <- TermDocumentMatrix(clean_lem)
+TDM <- as.matrix(TDM)
+word_frequency <- sort(rowSums(TDM),decreasing=TRUE)
+lemm_df <- data.frame(word = names(word_frequency),freq=word_frequency)
+
+# Remove word == “ or ”
+lemm_df <- lemm_df %>% filter(!word %in% c('“', '”') )
+
+# View head
+head(lemm_df, n=10)
+
+```
+
+
+### Term Frequency - Inverse Document Frequency [TF-IDF]
+The **Term Frequency (TF)** will measure how many times a token appears in a document. The calculation of the TF for each word within a document is as simple as [TF] / [Total terms]. So, the TF for dog in d1 is 2/6 = 0.33, in d2 it is 1/6 = 0.17, and 0/4 = 0 in d3. Therefore, the word dog is more frequent in d1 than in any other document.
+
+The **Inverse Document Frequency (IDF)** will measure how important a term is. It calculates a logarithm of the inverted frequency. So, log([Number Documents]/ N Docs with the term]). This calculation will decrease in importance terms that are very frequent in every document and will scale up terms that are more rate. The IDF for dog is log(3/2) = 0.4054.
+
+
+To create the TF-IDF, we must separate the book in different documents. We will do that by separating the chapters.
+
+```{r}
+# Add column with the indexes
+tokens_by_chapter <- clean_tokens %>% 
+  mutate(idx = 1:nrow(clean_tokens)) %>% 
+  select(idx, tokens)
+
+# Finding indexes
+idx <- tokens_by_chapter %>% 
+  filter(tokens %in% c('ii','iii','iv','v','vi','vii','viii',
+                       'ix','x','xi','xii','xiii','xiv','xv', 'xvi', 
+                       'introduction','epilogue') & idx > 46)
+
+# Adding the chapter column
+tokens_by_chapter <- tokens_by_chapter %>% 
+  mutate(chapter = 
+           case_when(
+             idx < 621 ~ "introduction",
+             between(idx, 621, 1045) ~ "ii",
+             between(idx, 1045, 1764) ~ "iii",
+             between(idx, 1764, 2566) ~ "iv",
+             between(idx, 2566, 3143) ~ "v",
+             between(idx, 3143, 3930) ~ "vi",
+             between(idx, 3930, 4695) ~ "vii",
+             between(idx, 4695, 6098) ~ "viii",
+             between(idx, 6098, 6825) ~ "ix",
+             between(idx, 6825, 7670) ~ "x",
+             between(idx, 7670, 8509) ~ "xi",
+             between(idx, 8509, 9407) ~ "xii",
+             between(idx, 9407, 9777) ~ "xiii",
+             between(idx, 9777, 10537) ~ "xiv",
+             between(idx, 10537, 10700) ~ "xv",
+             between(idx, 10700, 11171) ~ "xvi",
+             idx >= 11171 ~ "epilogue"     )    ) %>% 
+  select(chapter, tokens)
+
+# Words by chapter
+tokens_by_chapter <- tokens_by_chapter %>%
+  count(tokens, chapter, sort=T)
+
+# TF-IDF calculation
+data_tf_idf <- tokens_by_chapter %>%
+  bind_tf_idf(tokens, chapter, n)
+```
+
+Now, the next snippet is to plot the analysis.
+```{r}
+
+# Data to plot
+plot_tf_idf <- data_tf_idf %>%
+  group_by(chapter) %>%
+  slice_max(tf_idf, n = 5, with_ties = F) %>%
+  ungroup()
+
+#Plot TF-IDF
+plot_tf_idf %>% 
+  ggplot(aes(x=tf_idf, y=fct_reorder(tokens, tf_idf), fill = chapter)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~chapter, ncol = 4, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
+
+## N-grams
+N-grams are groups of N words in sequence. Text mining projects tend to work with bi-grams or tri-grams, which are the groups of 2 and 3 words in sequence.
+
+```{r}
+
+# Most frequent 2-grams
+book %>%
+  unnest_tokens(output = ngrams,
+                input = text,
+                token= 'ngrams', n=2) %>% 
+  count(ngrams, sort=T)
+
+```
+
+
+We could use the clean data to compare.
+```{r}
+
+# Gather clean text
+clean_text <- clean_tokens %>% 
+  select(tokens) %>% 
+  str_c(sep=" ", collapse = NULL) %>% 
+  as.tibble()
+
+# Most frequent 2-grams
+clean_text %>%
+  unnest_tokens(output = ngrams,
+                input = value,
+                token= 'ngrams', n=2) %>% 
+  count(ngrams, sort=T)
+
+
+```
+
+Here is an extra code for a plot of the network created by related words and chapters.
+
+```{r}
+library(igraph)
+library(ggraph)
+
+ # Counting words frequency
+word_freq <-
+clean_tokens %>% 
+  count(tokens, sort=TRUE)
+
+set.seed(1234)
+tokens_by_chapter %>%
+  filter(n >= 8) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+
+
+
+
+
+
+
+
+
+
 
