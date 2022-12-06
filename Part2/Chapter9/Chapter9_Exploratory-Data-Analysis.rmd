@@ -78,6 +78,14 @@ We will start our exploration with the functions `glimpse()` to see the data typ
 
 # glimpse
 glimpse(df)
+
+# To know the number of rows only
+#nrow(df)
+# number of columns
+#ncol(df)
+# dimensions: rows and columns
+#dim(df)
+
 ```
 
 Ok. We saw a couple of corrections we could make, like transforming the `Major_code`, `Major` and `Major_category` in factors, since those are categories.
@@ -114,7 +122,8 @@ remove(stats)
 # Descriptive stats
 skim(df)
 
-
+# another option, from base R
+#summary(df)
 ```
 
 **We can extract the following insights from the descriptive statistics:**
