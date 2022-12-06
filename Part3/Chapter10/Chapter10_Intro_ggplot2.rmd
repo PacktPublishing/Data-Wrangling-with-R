@@ -273,7 +273,7 @@ The geom_smooth() function, as per the documentation, calculates a smoothed line
 # Smooth line
 ggplot(df) + 
   geom_point( aes(x= hp, y= mpg, color= factor(vs)) ) + 
-  geom_smooth( aes(x= hp, y= mpg))
+  geom_smooth( aes(x= hp, y= mpg), method = 'loess')
 
 ```
 Recoding to make x and y global axes for all geometries.
@@ -282,7 +282,7 @@ Recoding to make x and y global axes for all geometries.
 # Smooth line
 ggplot(df, aes(x= hp, y= mpg) ) + 
   geom_point(aes(color= factor(vs))) + 
-  geom_smooth()
+  geom_smooth(method='loess')
 
 ```
 
