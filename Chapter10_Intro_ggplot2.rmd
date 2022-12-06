@@ -1,0 +1,344 @@
+---
+title: "Chapter10_Intro_ggplot2"
+author: "Gustavo R Santos"
+date: '2022-08-24'
+output: html_document
+---
+
+## Packt Book
+## Data Wrangling With R
+### Chapter 10 - Introduction to ggplot2
+
+This document is part of the Packt Book *Data Wrangling with R*.
+
+---
+
+
+## Import Libraries
+```{r}
+
+library(tidyverse)
+library(datasets)
+library(patchwork)
+
+```
+
+`ggplot2` follows the grammar of graphics theory, enabling the developer to create graphics by layers.
+We must follow these questions to create a basic plot.
+
+## Questions Template
+To build a basic plot with ggplot2, follow these questions template:
+*	What is the dataset to be used?
+*	What kind of graphic will be plotted?
+*	What goes on the X axis and Y axis?
+*	What is the graphic title?
+
+```{r}
+
+# Set a seed for reproduce the same results
+set.seed(42)
+
+# Create a sample dataset
+df <- data.frame(
+  var1 = runif(20),
+  var2 = rnorm(20)
+)
+
+
+# What is the dataset to be used?
+ggplot(df) +
+# What kind of graphic?
+  geom_point( 
+# What goes on X and Y?
+    mapping= aes(x=var1, y=var2 ) ) +
+# What is the graphic title?
+  ggtitle('My first ggplot2 graphic')
+
+```
+
+
+
+
+## Dataset
+
+In this chapter, we will use the dataset "mtcars", from the package datasets  to illustrate the plots.
+To make the code more generically applicable to any dataset, I will call it "df".
+```{r}
+
+# Loading the dataset
+data("mtcars")
+df <- mtcars
+
+remove(mtcars)
+
+```
+
+
+### Histogram
+
+Histograms are created using the function `geom_histogram()` in ggplot2.
+This is a great graphic to look at the variable distribution.
+
+```{r}
+
+# What is the dataset to be used?
+ggplot(df) +
+# What kind of graphic?
+  geom_histogram( 
+# What goes on x, what is the color, fill color and number of bins?
+    mapping= aes(x= mpg), bins= 20,
+    color='lightgray', fill='royalblue' ) +
+# What is the graphic title?
+  ggtitle('Histogram of Miles per Gallon')
+
+
+```
+
+
+### Boxplot
+
+The boxplot can be created with the geometry function geom_point(), since it is also known as *points graphic*. This is a good plot to find outliers.
+
+```{r}
+
+# Boxplot of MPG
+
+# Dataset
+ggplot( df ) + 
+# Geometry, Y and filling color
+  geom_boxplot( aes(y=mpg), fill='royalblue' ) + 
+# title
+  ggtitle('Boxplot of Miles per Gallon')
+
+```
+
+Boxplots are also a good choice if you are interested in comparing groups averages.
+```{r}
+
+# Boxplot of MPG by engine type
+
+# Dataset
+ggplot( df ) + 
+# Geometry, X, Y and filling color
+  geom_boxplot( aes(x= factor(vs), y=mpg), fill='royalblue' ) + 
+# overwrite the X label
+  labs(x='Engine shape') +
+# title
+  ggtitle('A comparison between V-shaped vs. Line-shaped engines and the effect on MPG')
+
+```
+
+
+### Scatterplot or Points plot
+
+The scatterplot is also known as points plot. Ergo, that was the name of the geometry chosen by the library’s creators. Use `geom_point()` to create a scatterplot.
+This graphic type is very useful for understanding relationships between variables and correlations.
+```{r}
+
+# Scatterplot weight versus mpg
+ggplot(df) + 
+  geom_point( aes(x= wt, y= mpg), 
+              color= 'royalblue', size=4, shape=15, alpha=0.7 ) +
+  labs(x= 'Weight of the cars', y= 'Miles per gallon',
+       title= 'How does the weight affect MPG in cars?',
+       subtitle= 'As the weight increases, the car will make less miles per gallon')
+
+```
+
+
+
+
+### Bar plot
+
+For categorical plot, the bar or column plots are essential, showing counts or values for each category represented. To create such graphic, use the geometry function `geom_bar()` or `geom_col()`.
+
+```{r}
+
+# Bar plot
+ggplot(df) + 
+  geom_bar( aes(x= factor(am), fill=factor(am) ) ) +
+  labs(x='Automatic(0) | Manual(1)') + 
+  ggtitle('Count of observations by transmission type')
+
+
+```
+
+To create a geom_bar() graphic with two variables, you must pass a statistic.
+
+```{r}
+
+# Bar plot with two variables
+ggplot(df) + 
+# statistic calculation - mean value
+  geom_bar(aes(x= factor(am), y= mpg, fill= factor(am)),
+           stat = 'summary', fun='mean')
+
+# Another syntax
+ggplot(df) + 
+# statistic calculation - mean value
+  stat_summary(aes(x= factor(am), y= mpg, fill= factor(am)), fun='mean', geom='bar')
+
+```
+
+
+**Column plot**
+
+```{r}
+
+# Column plot for MPG by transmission type
+ggplot(df) + 
+  geom_col( aes(x= factor(am), y=mpg, fill=factor(am) ) ) +
+  labs(x='Automatic(0) | Manual(1)')
+
+
+```
+
+**Stacked or Side-by-side**
+
+The position argument can be changed to setup the graphic as desired.
+Let's see how to plot a stacked bar plot
+
+```{r}
+
+# Bar plot stacked
+g1=ggplot(df) + 
+  geom_bar( aes(x= factor(cyl), fill=factor(vs) ),
+            position = 'stack')
+
+# Bar plot side
+g2=ggplot(df) + 
+  geom_bar( aes(x= factor(cyl), fill=factor(vs) ),
+            position = 'dodge')
+
+# Bar plot fill
+g3=ggplot(df) + 
+  geom_bar( aes(x= factor(cyl), fill=factor(vs) ),
+            position = 'fill')
+
+# Patchwork to put three plots on the same line
+(g1| g2| g3)
+
+```
+
+
+
+### Line plot
+
+The line plots are very indicated to show progression over time. Let’s say that there is a dataset with car sales throughout the months and we want to visualize that information, the line plot would be one of the best indications.
+
+```{r}
+# Seed for reproduction
+set.seed(42)
+
+# Car sales
+sales <- data.frame(
+  month= factor(1:12),
+  sales= as.integer(abs(rnorm(12)*10000)),
+  sales2= as.integer(abs(rnorm(12)*11000))
+)
+
+```
+
+
+Now the line plot.
+```{r}
+
+# Simple Line plot
+ggplot(sales) + 
+  geom_line( aes(x=month, y= sales, group=1),
+             size=1, color='darkgreen') +
+  ggtitle('Car sales throughout the months')
+```
+
+We can plot a line plot with multiple lines.
+
+```{r}
+# Line plot with two variables
+ggplot(sales) + 
+  geom_line( aes(x=month, y= sales, group=1, color='sales year 1'),
+             size=1, linetype=2) +
+  geom_line( aes(x=month, y= sales2, group=1, color='sales year 2'),
+             size=1, linetype=1) +
+  ggtitle('Car sales throughout the months - Two year comparison')
+
+```
+
+
+### Smooth geometry
+
+The geom_smooth() function, as per the documentation, calculates a smoothed line that helps us to see trends in the points, using methods like linear regression, general linear model, polynomial regression and others, to create the trend line that helps in the graphic interpretation.
+
+```{r}
+
+# Smooth line
+ggplot(df) + 
+  geom_point( aes(x= hp, y= mpg, color= factor(vs)) ) + 
+  geom_smooth( aes(x= hp, y= mpg), method = 'loess')
+
+```
+Recoding to make x and y global axes for all geometries.
+
+```{r}
+# Smooth line
+ggplot(df, aes(x= hp, y= mpg) ) + 
+  geom_point(aes(color= factor(vs))) + 
+  geom_smooth(method='loess')
+
+```
+
+### Themes
+
+Another grammatical element to support graphic creation in ggplot2 is the theme. Themes are preset visual configurations that one can add to the code as a layer and create a plot that makes more sense with the style of the project. 
+Use `theme_xxx()`to add one yo the plot.
+
+```{r}
+
+# Theme BW
+g1 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='BW')+
+  theme_bw()
+
+# Theme Classic
+g2 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Classic')+
+  theme_classic()
+
+# Theme Light
+g3 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Light')+
+  theme_light()
+
+# Theme dark
+g4 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Dark')+
+  theme_dark()
+
+# Theme Gray
+g5 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Gray')+
+  theme_gray()
+
+# Theme Linedraw
+g6 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Linedraw')+
+  theme_linedraw()
+
+# Theme Minimal
+g7 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='Minimal')+
+  theme_minimal()
+
+# Theme void
+g8 = ggplot(df) + 
+  geom_bar( aes(x= factor(am) ), fill= 'royalblue' ) + labs(title='void')+
+  theme_void()
+
+(g1 | g2 | g3 | g4) / (g5 | g6 | g7 | g8)
+
+
+
+```
+
+
+
+
