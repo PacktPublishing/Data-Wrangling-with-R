@@ -18,6 +18,7 @@ This document is part of the Packt Book *Data Wrangling with R*.
 ```{r}
 
 library(tidyverse)
+library(lubridate)
 library(datasets)
 library(patchwork)
 library(plotly)
@@ -157,6 +158,73 @@ ggplot(states) +
   ylim(20,55) +
   theme_void()
 ```
+
+
+### Time Series Plots
+Time Series is a dataset where the sequence of points is ordered in time. So the data will present a measurement of any given variable through time periods, such as days, hours, months or any other time period.
+Let's see how to visualize time series.
+
+```{r}
+set.seed(10)
+# Creating a Dataset
+ts <- data.frame(
+  date = seq(ymd('2022-01-01'),ymd('2022-06-30'),by='days'),
+  measure = as.integer(runif(181, min=600,  max= 1000) + sort(rexp(181,0.001)))
+)
+
+```
+
+Let's start with the most basic plot
+```{r}
+
+# Basic plot
+ggplot(ts) +
+  geom_line( aes(x=date, y=measure), size=0.7)+
+  theme_classic()
+
+```
+If we call the basic plot `basic_plot`, then all we have to do is to add more layers as we want.
+```{r}
+
+# Basic plot
+basic_plot <- ggplot(ts) +
+  geom_line( aes(x=date, y=measure), size=0.7)+
+  theme_classic()
+
+# To change the X axis label format
+# Year 4 digit, abbreviated month and day
+basic_plot + scale_x_date(date_labels = "%Y %b %d")
+# Abbreviated month, year 2 digit
+basic_plot+scale_x_date(date_labels = "%b %y")
+
+```
+We can also control the breaks between the labels. For example, we can see the breaks by month or bi-weekly instead of the three month period above.
+```{r}
+
+# Breaks by one month
+basic_plot + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b")
+
+# Breaks by bi-weekly month
+basic_plot + 
+  scale_x_date(date_breaks = "2 weeks", date_labels = "%W %y")
+
+basic_plot + 
+  scale_x_date(date_breaks = "2 weeks", date_labels = "%m %d")
+
+```
+We can also select some specific time dates from our time series.
+```{r}
+
+# Closeup on date after 06/01
+basic_plot +
+  scale_x_date( limit=as.Date( c("2022-06-01", "2022-07-01") ),
+                date_breaks = "1 week", date_labels = "%m %d")
+               
+
+```
+
+
 
 
 
