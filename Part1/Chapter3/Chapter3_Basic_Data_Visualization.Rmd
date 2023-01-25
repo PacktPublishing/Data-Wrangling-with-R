@@ -41,7 +41,7 @@ hist(mtcars$mpg)
 
 #Custom histogram
 hist(mtcars$mpg, col= 'royalblue',
-     main='Histogram of MPG', xlab = 'MPG',
+     main='Histogram of Miles per Gallon (MPG)', xlab = 'MPG',
      breaks= 'FD')
 
 ```
@@ -53,7 +53,7 @@ hist(mtcars$mpg, col= 'royalblue',
 
 # Plot Boxplot of MPG
 boxplot(mtcars$mpg, col='royalblue',
-        main= 'Boxplot of MPG',
+        main= 'Boxplot of Miles per Gallon (MPG)',
         ylab= 'Miles per Gallon')
 
 ```
@@ -80,7 +80,8 @@ Boxplot using formula notation
 # Boxplot with formula notation
 boxplot(mpg ~ cyl, data= mtcars,
         col= c('gold', 'coral', 'blue'),
-        main= 'MPG by number of Cylinders')
+        main= 'Miles per Gallon by Number of Cylinders',
+        xlab = 'Cylinders', ylab= 'Miles per Gallon')
 
 ```
 
@@ -129,8 +130,8 @@ One of the best visuals to visualize relationships between numerical variables i
 
 # Basic scatterplot
 plot(x=mtcars$hp, y=mtcars$mpg, 
-     main= 'Scatterplot HP vs. MPG',
-     xlab= 'HP', ylab= 'MPG',
+     main= 'Effect of Horsepower on Milesper Gallon (MPG)',
+     xlab= 'Horsepower', ylab= 'MPG',
      col='royalblue', pch=16)
 
 ```
