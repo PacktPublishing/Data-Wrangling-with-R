@@ -59,7 +59,7 @@ str_detect(text, 'll')
 
 # Create a phrase
 text <- 'hello, world!'
-# Detect if the string has the letters "ll"
+# Detect if the string has the word "world"
 str_detect(text, 'world')
 
 
