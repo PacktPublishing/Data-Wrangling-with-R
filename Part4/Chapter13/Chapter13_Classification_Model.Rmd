@@ -241,7 +241,7 @@ top20 <- long_spam %>%
   arrange(desc(mean_pct)) %>% head(20) %>% 
   ungroup()
 
-# Top 15 plot
+# Top 20 plot
 long_spam %>% 
   filter(str_detect(words,'word_') & spam == 1 & words %in% top20$words) %>%
   ggplot()+
@@ -451,7 +451,7 @@ spam_for_model <- spam %>%
 
 ```{r}
 
-# Seed for reproduce the same result for random numbers
+# Seed to reproduce the same result for random numbers
 set.seed(17)
 
 # Replace the binary 1(spam) and 0(not_spam)
