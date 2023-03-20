@@ -211,8 +211,17 @@ na_by_column(df_replaced)
 But there is another way, much easier, by the way, using the function `na_if()`. Simply put, if a value is a given pattern, make it `NA`.
 ```{r}
 
-# Replacing values "?" with NA
+#-----------------------------------------------------------------------------------------------
+# Replacing values "?" with NA (tidyverse 1.3.1)
+### This may throw an error in newer versions of tidyverse, so refer to the next code below ###
+
 df_replaced <- df %>% na_if('?') 
+#-----------------------------------------------------------------------------------------------
+
+# Replacing values "?" with NA (tidyverse 1.3.2)
+df_replaced <- df %>% mutate(workclass = na_if(workclass, '?'),
+                             occupation = na_if(occupation, '?'),
+                             native_country = na_if(native_country, '?'))
 
 
 # Count NAs by variable
